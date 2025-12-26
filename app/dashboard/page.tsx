@@ -87,12 +87,19 @@ export default function Dashboard() {
           // Fallback to individual API calls if unified endpoint fails
           const portfolioResponse = await apiClient.getUserPortfolio();
           if (portfolioResponse.success && portfolioResponse.data) {
+            const portfolioData = portfolioResponse.data as {
+              totalInvested?: number;
+              portfolioValue?: number;
+              totalReturns?: number;
+              activeInvestments?: number;
+              projectedAnnualReturn?: number;
+            };
             setPortfolioStats({
-              totalInvested: portfolioResponse.data.totalInvested || 0,
-              portfolioValue: portfolioResponse.data.portfolioValue || portfolioResponse.data.totalInvested || 0,
-              totalReturns: portfolioResponse.data.totalReturns || 0,
-              activeInvestments: portfolioResponse.data.activeInvestments || 0,
-              projectedAnnualReturn: portfolioResponse.data.projectedAnnualReturn || 0
+              totalInvested: portfolioData.totalInvested ?? 0,
+              portfolioValue: portfolioData.portfolioValue ?? portfolioData.totalInvested ?? 0,
+              totalReturns: portfolioData.totalReturns ?? 0,
+              activeInvestments: portfolioData.activeInvestments ?? 0,
+              projectedAnnualReturn: portfolioData.projectedAnnualReturn ?? 0
             });
           }
 

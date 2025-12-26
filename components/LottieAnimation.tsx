@@ -27,9 +27,10 @@ export default function LottieAnimation({
   height = 200,
   width = 200,
 }: LottieAnimationProps) {
-  // If no animation data or path is provided, return null
-  // In production, you would load Lottie files from /public/animations/ or an API
-  if (!animationData && !path) {
+  // If no animation data is provided, return null
+  // Note: lottie-react v2+ only supports animationData, not path
+  // To use path, you need to fetch the JSON first or use a different approach
+  if (!animationData) {
     return null;
   }
 
@@ -37,7 +38,6 @@ export default function LottieAnimation({
     <div className={className} style={{ height, width, ...style }}>
       <Lottie
         animationData={animationData}
-        path={path}
         loop={loop}
         autoplay={autoplay}
         style={{ height, width }}

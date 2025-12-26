@@ -945,5 +945,5 @@ class ApiClient {
 // Create and export API client instance
 export const apiClient = new ApiClient(API_BASE_URL);
 
-// Export types
-export type { User, Project, Investment, DocumentFile, Notification, Transaction, OwnerDashboardData, InvestorDashboardData, HowItWorksContent, SubscriptionPlan, UserSubscription, SubscriptionAddOn, UserAddOn, ApiResponse };
+// Types are already exported via their interface declarations above
+// No need to re-export them here

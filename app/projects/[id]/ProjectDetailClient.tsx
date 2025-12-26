@@ -348,7 +348,7 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
                   <h3 className="text-lg font-semibold mb-3">Developer Information</h3>
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <p className="font-medium">{project.developer.firstName} {project.developer.lastName}</p>
-                    <p className="text-sm text-gray-600">{project.developer.companyName}</p>
+                    <p className="text-sm text-gray-600">{(project.developer as any).companyName || 'Developer'}</p>
                   </div>
                 </div>
               </CardContent>

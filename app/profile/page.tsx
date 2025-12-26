@@ -62,7 +62,13 @@ export default function Profile() {
     overall: 'pending'
   });
 
-  const [documents, setDocuments] = useState([
+  const [documents, setDocuments] = useState<Array<{
+    id: number;
+    name: string;
+    type: string;
+    status: string;
+    uploadedAt: string | null;
+  }>>([
     { id: 1, name: 'National ID Card', type: 'identity', status: 'pending', uploadedAt: null },
     { id: 2, name: 'Proof of Address', type: 'address', status: 'pending', uploadedAt: null },
     { id: 3, name: 'Bank Statement', type: 'income', status: 'pending', uploadedAt: null },

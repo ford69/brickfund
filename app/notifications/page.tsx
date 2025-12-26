@@ -185,7 +185,7 @@ export default function NotificationsPage() {
                     <p className="text-gray-600 mb-3">{notification.message}</p>
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-500">
-                        {formatDate(notification.date)}
+                        {formatDate(notification.createdAt)}
                       </span>
                       {!notification.isRead && (
                         <Button

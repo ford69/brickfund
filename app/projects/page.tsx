@@ -62,14 +62,14 @@ export default function ProjectsPage() {
           if (Array.isArray(response.data)) {
             console.log('[ProjectsPage] Setting projects array:', response.data.length, 'items');
             setProjects(response.data);
-          } else if (response.data && Array.isArray(response.data.projects)) {
+          } else if (response.data && typeof response.data === 'object' && 'projects' in response.data && Array.isArray((response.data as any).projects)) {
             // If data is wrapped in an object with a projects property
-            console.log('[ProjectsPage] Setting projects from data.projects:', response.data.projects.length, 'items');
-            setProjects(response.data.projects);
-          } else if (response.data && Array.isArray(response.data.data)) {
+            console.log('[ProjectsPage] Setting projects from data.projects:', (response.data as any).projects.length, 'items');
+            setProjects((response.data as any).projects);
+          } else if (response.data && typeof response.data === 'object' && 'data' in response.data && Array.isArray((response.data as any).data)) {
             // If data is nested
-            console.log('[ProjectsPage] Setting projects from data.data:', response.data.data.length, 'items');
-            setProjects(response.data.data);
+            console.log('[ProjectsPage] Setting projects from data.data:', (response.data as any).data.length, 'items');
+            setProjects((response.data as any).data);
           } else {
             console.warn('[ProjectsPage] Unexpected response structure:', response);
             setProjects([]);
@@ -295,8 +295,8 @@ export default function ProjectsPage() {
                 </div>
 
                 <p className="text-sm text-gray-600 mb-4">
-                  {typeof project.developer === 'object' && project.developer?.companyName 
-                    ? project.developer.companyName 
+                  {typeof project.developer === 'object' && (project.developer as any)?.companyName
+                    ? (project.developer as any).companyName
                     : 'Developer'}
                 </p>
 

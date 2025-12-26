@@ -64,7 +64,7 @@ export default function ManageSubscriptionPage() {
       const response = await apiClient.cancelSubscription(subscription._id);
       
       if (response.success) {
-        setSubscription(response.data);
+        setSubscription(response.data || null);
         toast({
           title: 'Subscription Cancelled',
           description: 'Your subscription will remain active until the end of the current billing period.',
@@ -92,10 +92,10 @@ export default function ManageSubscriptionPage() {
       });
 
       if (response.success) {
-        setSubscription(response.data);
+        setSubscription(response.data || null);
         toast({
           title: 'Auto-renew Updated',
-          description: `Auto-renewal has been ${response.data.autoRenew ? 'enabled' : 'disabled'}.`,
+          description: `Auto-renewal has been ${response.data?.autoRenew ? 'enabled' : 'disabled'}.`,
         });
       }
     } catch (error: any) {
