@@ -20,20 +20,24 @@ import {
   User,
   LogOut
 } from 'lucide-react';
-import { apiClient, Investment, Project } from '@/lib/api';
+import { apiClient, Investment, Project, InvestorDashboardData } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [portfolioStats, setPortfolioStats] = useState({
     totalInvested: 0,
+    portfolioValue: 0,
     totalReturns: 0,
     activeInvestments: 0,
     projectedAnnualReturn: 0
   });
   const [investments, setInvestments] = useState<Investment[]>([]);
-  const [recentActivity, setRecentActivity] = useState<any[]>([]);
+  const [recentPayments, setRecentPayments] = useState<any[]>([]);
+  const [recentDistributions, setRecentDistributions] = useState<any[]>([]);
   const [recommendedProjects, setRecommendedProjects] = useState<Project[]>([]);
 
   useEffect(() => {
@@ -41,16 +45,61 @@ export default function Dashboard() {
       try {
         setIsLoading(true);
         
-        // Fetch portfolio data
-        const portfolioResponse = await apiClient.getUserPortfolio();
-        if (portfolioResponse.success && portfolioResponse.data) {
-          setPortfolioStats(portfolioResponse.data);
-        }
+        // Use unified dashboard endpoint (automatically routes based on user role)
+        const dashboardResponse = await apiClient.getDashboard();
+        
+        if (dashboardResponse.success && dashboardResponse.data) {
+          const dashboardData = dashboardResponse.data;
+          
+          // Check if user is admin or developer and redirect to appropriate dashboard
+          if (user?.role === 'admin') {
+            router.push('/admin');
+            return;
+          }
+          if (user?.role === 'developer') {
+            router.push('/owner-dashboard');
+            return;
+          }
+          
+          // Handle investor dashboard data
+          if (dashboardData.stats) {
+            setPortfolioStats({
+              totalInvested: dashboardData.stats.totalInvested || 0,
+              portfolioValue: dashboardData.stats.portfolioValue || 0,
+              totalReturns: dashboardData.stats.totalReturns || 0,
+              activeInvestments: dashboardData.stats.activeInvestments || 0,
+              projectedAnnualReturn: dashboardData.stats.projectedAnnualReturn || 0
+            });
+          }
+          
+          if (dashboardData.recentInvestments) {
+            setInvestments(dashboardData.recentInvestments);
+          }
+          
+          if (dashboardData.recentPayments) {
+            setRecentPayments(dashboardData.recentPayments);
+          }
+          
+          if (dashboardData.recentDistributions) {
+            setRecentDistributions(dashboardData.recentDistributions);
+          }
+        } else {
+          // Fallback to individual API calls if unified endpoint fails
+          const portfolioResponse = await apiClient.getUserPortfolio();
+          if (portfolioResponse.success && portfolioResponse.data) {
+            setPortfolioStats({
+              totalInvested: portfolioResponse.data.totalInvested || 0,
+              portfolioValue: portfolioResponse.data.portfolioValue || portfolioResponse.data.totalInvested || 0,
+              totalReturns: portfolioResponse.data.totalReturns || 0,
+              activeInvestments: portfolioResponse.data.activeInvestments || 0,
+              projectedAnnualReturn: portfolioResponse.data.projectedAnnualReturn || 0
+            });
+          }
 
-        // Fetch investments
-        const investmentsResponse = await apiClient.getUserInvestments();
-        if (investmentsResponse.success && investmentsResponse.data) {
-          setInvestments(investmentsResponse.data);
+          const investmentsResponse = await apiClient.getUserInvestments();
+          if (investmentsResponse.success && investmentsResponse.data) {
+            setInvestments(investmentsResponse.data);
+          }
         }
 
         // Fetch recommended projects
@@ -65,8 +114,10 @@ export default function Dashboard() {
       }
     };
 
-    fetchDashboardData();
-  }, []);
+    if (user) {
+      fetchDashboardData();
+    }
+  }, [user, router]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-GH', {
@@ -141,13 +192,13 @@ export default function Dashboard() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600 mb-2">Total Returns</p>
+                  <p className="text-sm text-gray-600 mb-2">Portfolio Value</p>
                   <p className="text-2xl font-bold text-green-600">
-                    {formatCurrency(portfolioStats.totalReturns)}
+                    {formatCurrency(portfolioStats.portfolioValue || portfolioStats.totalInvested)}
                   </p>
                   <div className="flex items-center text-sm text-green-600 mt-1">
                     <ArrowUpRight className="h-4 w-4 mr-1" />
-                    +15.0%
+                    {portfolioStats.totalReturns > 0 ? `+${formatCurrency(portfolioStats.totalReturns)}` : formatCurrency(portfolioStats.totalReturns)}
                   </div>
                 </div>
                 <div className="bg-green-100 p-3 rounded-full">
@@ -270,21 +321,37 @@ export default function Dashboard() {
                     <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-700"></div>
                     <p className="mt-4 text-gray-600">Loading activity...</p>
                   </div>
-                ) : recentActivity.length > 0 ? (
+                ) : (recentPayments.length > 0 || recentDistributions.length > 0) ? (
                   <div className="space-y-4">
-                    {recentActivity.map((activity, index) => (
-                      <div key={index} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
-                        <div className={`p-2 rounded-full ${
-                          activity.type === 'investment' ? 'bg-blue-100' :
-                          activity.type === 'payout' ? 'bg-green-100' : 'bg-orange-100'
-                        }`}>
-                          {activity.type === 'investment' && <DollarSign className="h-4 w-4 text-blue-600" />}
-                          {activity.type === 'payout' && <ArrowUpRight className="h-4 w-4 text-green-600" />}
-                          {activity.type === 'update' && <Bell className="h-4 w-4 text-orange-600" />}
+                    {/* Recent Payments */}
+                    {recentPayments.map((payment) => (
+                      <div key={payment._id} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
+                        <div className="p-2 rounded-full bg-blue-100">
+                          <ArrowDownRight className="h-4 w-4 text-blue-600" />
                         </div>
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-gray-900">{activity.text}</p>
-                          <p className="text-xs text-gray-500">{activity.date}</p>
+                          <p className="text-sm font-medium text-gray-900">
+                            Payment of {formatCurrency(payment.amount / 100)} {payment.currency}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {new Date(payment.createdAt).toLocaleDateString()} • {payment.status}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                    {/* Recent Distributions */}
+                    {recentDistributions.map((distribution) => (
+                      <div key={distribution._id} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
+                        <div className="p-2 rounded-full bg-green-100">
+                          <ArrowUpRight className="h-4 w-4 text-green-600" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900">
+                            Distribution of {formatCurrency(distribution.amount / 100)}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {new Date(distribution.date).toLocaleDateString()} • {distribution.status}
+                          </p>
                         </div>
                       </div>
                     ))}

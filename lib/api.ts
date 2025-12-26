@@ -148,7 +148,40 @@ export interface OwnerDashboardData {
     _id: string;
     name: string;
     amount: number;
-    project: string;
+    project: string | { title?: string; name?: string };
+    date: string;
+    status: string;
+  }>;
+}
+
+export interface InvestorDashboardData {
+  stats: {
+    totalInvested: number;
+    portfolioValue: number;
+    totalReturns: number;
+    activeInvestments: number;
+    projectedAnnualReturn: number;
+  };
+  recentInvestments: Array<Investment & {
+    project?: Project | string;
+    projectName?: string;
+  }>;
+  recentPayments: Array<{
+    _id: string;
+    amount: number;
+    currency: string;
+    status: string;
+    projectId: string;
+    project?: Project | string;
+    createdAt: string;
+  }>;
+  recentDistributions: Array<{
+    _id: string;
+    amount: number;
+    investmentId: string;
+    investment?: Investment;
+    projectId: string;
+    project?: Project | string;
     date: string;
     status: string;
   }>;
@@ -174,6 +207,53 @@ export interface HowItWorksContent {
     question: string;
     answer: string;
   }>;
+}
+
+export type SubscriptionTier = 'starter' | 'pro' | 'growth' | 'enterprise';
+
+export interface SubscriptionPlan {
+  tier: SubscriptionTier;
+  name: string;
+  price: number;
+  duration: number; // in days
+  durationLabel: string;
+  maxProjects: number | 'unlimited';
+  features: string[];
+  popular?: boolean;
+  costRank: string;
+}
+
+export interface UserSubscription {
+  _id: string;
+  userId: string;
+  tier: SubscriptionTier;
+  status: 'active' | 'expired' | 'cancelled' | 'trial';
+  startDate: string;
+  endDate: string;
+  autoRenew: boolean;
+  paymentReference?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SubscriptionAddOn {
+  _id: string;
+  type: 'featured_boost' | 'marketing_push' | 'branding_customization';
+  name: string;
+  price: number;
+  duration?: number; // in days, for time-based add-ons
+  description: string;
+}
+
+export interface UserAddOn {
+  _id: string;
+  userId: string;
+  projectId?: string;
+  addOnType: string;
+  status: 'active' | 'expired';
+  startDate: string;
+  endDate?: string;
+  createdAt: string;
 }
 
 // API Client Class
@@ -506,6 +586,43 @@ class ApiClient {
     });
   }
 
+  async initializePayment(paymentData: { 
+    projectId: string; 
+    amount: number; 
+    email: string;
+    metadata?: Record<string, any>;
+  }) {
+    return this.request<{
+      authorization_url?: string;
+      authorizationUrl?: string;
+      access_code?: string;
+      accessCode?: string;
+      reference: string;
+      paymentId?: string;
+    }>('/payments/initialize', {
+      method: 'POST',
+      body: JSON.stringify(paymentData),
+    });
+  }
+
+  async verifyPayment(reference: string) {
+    return this.request<{
+      status: string;
+      payment?: {
+        _id: string;
+        paystackReference?: string;
+        amount: number;
+        currency: string;
+        projectId?: string;
+        status: string;
+      };
+      investment?: Investment;
+      transaction?: any;
+    }>(`/payments/verify/${reference}`, {
+      method: 'GET',
+    });
+  }
+
   async getInvestment(id: string) {
     return this.request<Investment>(`/investments/${id}`);
   }
@@ -515,7 +632,22 @@ class ApiClient {
     return this.request('/admin/dashboard');
   }
 
-  async getAllUsers(params?: { page?: number; limit?: number; role?: string; kycStatus?: string }) {
+  async getAdminDashboardStats() {
+    return this.request<{
+      totalUsers: number;
+      totalInvestors: number;
+      totalDevelopers: number;
+      totalProjects: number;
+      pendingProjects: number;
+      pendingAccountApprovals: number;
+      activeProjects: number;
+      totalFundsRaised: number;
+      totalInvestments: number;
+      recentActivity: any[];
+    }>('/admin/dashboard/stats');
+  }
+
+  async getAdminUsers(params?: { page?: number; limit?: number; role?: string; kycStatus?: string; search?: string }) {
     const searchParams = new URLSearchParams();
     
     if (params) {
@@ -532,6 +664,10 @@ class ApiClient {
     return this.request<User[]>(endpoint);
   }
 
+  async getAllUsers(params?: { page?: number; limit?: number; role?: string; kycStatus?: string }) {
+    return this.getAdminUsers(params);
+  }
+
   async updateUserStatus(userId: string, isActive: boolean) {
     return this.request<User>(`/admin/users/${userId}/status`, {
       method: 'PATCH',
@@ -539,7 +675,20 @@ class ApiClient {
     });
   }
 
-  async getAllProjects(params?: { page?: number; limit?: number; status?: string; category?: string }) {
+  async updateAdminUser(userId: string, userData: Partial<User>) {
+    return this.request<User>(`/admin/users/${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify(userData),
+    });
+  }
+
+  async deleteUser(userId: string) {
+    return this.request(`/admin/users/${userId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getAdminProjects(params?: { page?: number; limit?: number; status?: string; category?: string; search?: string }) {
     const searchParams = new URLSearchParams();
     
     if (params) {
@@ -556,10 +705,68 @@ class ApiClient {
     return this.request<Project[]>(endpoint);
   }
 
+  async getAllProjects(params?: { page?: number; limit?: number; status?: string; category?: string }) {
+    return this.getAdminProjects(params);
+  }
+
   async updateProjectStatus(projectId: string, status: string) {
     return this.request<Project>(`/admin/projects/${projectId}/status`, {
       method: 'PATCH',
       body: JSON.stringify({ status }),
+    });
+  }
+
+  async approveProject(projectId: string, reason?: string) {
+    return this.request<Project>(`/admin/projects/${projectId}/approve`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
+  }
+
+  async rejectProject(projectId: string, reason: string) {
+    return this.request<Project>(`/admin/projects/${projectId}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
+  }
+
+  async getPendingAccountApprovals(params?: { page?: number; limit?: number }) {
+    const searchParams = new URLSearchParams();
+    
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          searchParams.append(key, value.toString());
+        }
+      });
+    }
+    
+    const queryString = searchParams.toString();
+    const endpoint = queryString ? `/admin/accounts/pending?${queryString}` : '/admin/accounts/pending';
+    
+    return this.request<Array<{
+      _id: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+      role: 'user' | 'developer';
+      status: 'pending' | 'approved' | 'rejected';
+      createdAt: string;
+      companyName?: string;
+    }>>(endpoint);
+  }
+
+  async approveAccount(accountId: string, reason?: string) {
+    return this.request<User>(`/admin/accounts/${accountId}/approve`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
+  }
+
+  async rejectAccount(accountId: string, reason: string) {
+    return this.request<User>(`/admin/accounts/${accountId}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
     });
   }
 
@@ -652,9 +859,18 @@ class ApiClient {
     });
   }
 
-  // Owner dashboard
+  // Unified dashboard (automatically routes based on user role)
+  async getDashboard() {
+    return this.request<OwnerDashboardData | InvestorDashboardData | any>('/users/dashboard');
+  }
+
+  // Role-specific dashboard endpoints
   async getOwnerDashboard() {
     return this.request<OwnerDashboardData>('/owner/dashboard');
+  }
+
+  async getInvestorDashboard() {
+    return this.request<InvestorDashboardData>('/investor/dashboard');
   }
 
   // Transactions
@@ -676,10 +892,58 @@ class ApiClient {
   async getHowItWorksContent() {
     return this.request<HowItWorksContent>('/content/how-it-works');
   }
+
+  // Subscription API
+  async getSubscriptionPlans() {
+    return this.request<SubscriptionPlan[]>('/subscriptions/plans');
+  }
+
+  async getUserSubscription() {
+    return this.request<UserSubscription>('/subscriptions/current');
+  }
+
+  async createSubscription(planId: SubscriptionTier, paymentData?: any) {
+    return this.request<{ subscription: UserSubscription; paymentUrl?: string }>('/subscriptions', {
+      method: 'POST',
+      body: JSON.stringify({ tier: planId, ...paymentData }),
+    });
+  }
+
+  async updateSubscription(subscriptionId: string, updates: { autoRenew?: boolean; tier?: SubscriptionTier }) {
+    return this.request<UserSubscription>(`/subscriptions/${subscriptionId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    });
+  }
+
+  async cancelSubscription(subscriptionId: string) {
+    return this.request<UserSubscription>(`/subscriptions/${subscriptionId}/cancel`, {
+      method: 'POST',
+    });
+  }
+
+  async getAvailableAddOns() {
+    return this.request<SubscriptionAddOn[]>('/subscriptions/add-ons');
+  }
+
+  async purchaseAddOn(addOnType: string, projectId?: string) {
+    return this.request<{ addOn: UserAddOn; paymentUrl?: string }>('/subscriptions/add-ons/purchase', {
+      method: 'POST',
+      body: JSON.stringify({ addOnType, projectId }),
+    });
+  }
+
+  async getUserAddOns() {
+    return this.request<UserAddOn[]>('/subscriptions/add-ons/current');
+  }
+
+  async checkSubscriptionFeature(feature: string) {
+    return this.request<{ allowed: boolean; reason?: string }>(`/subscriptions/check-feature/${feature}`);
+  }
 }
 
 // Create and export API client instance
 export const apiClient = new ApiClient(API_BASE_URL);
 
 // Export types
-export type { User, Project, Investment, DocumentFile, Notification, Transaction, OwnerDashboardData, HowItWorksContent, ApiResponse };
+export type { User, Project, Investment, DocumentFile, Notification, Transaction, OwnerDashboardData, InvestorDashboardData, HowItWorksContent, SubscriptionPlan, UserSubscription, SubscriptionAddOn, UserAddOn, ApiResponse };

@@ -24,7 +24,9 @@ import {
   Clock,
   AlertTriangle
 } from 'lucide-react';
-import { apiClient, OwnerDashboardData } from '@/lib/api';
+import { apiClient, OwnerDashboardData, UserSubscription } from '@/lib/api';
+import { getFeatureLimits } from '@/lib/subscription-utils';
+import SubscriptionStatus from '@/components/SubscriptionStatus';
 
 export default function OwnerDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -36,6 +38,7 @@ export default function OwnerDashboard() {
   });
   const [projects, setProjects] = useState<OwnerDashboardData['projects']>([]);
   const [recentInvestors, setRecentInvestors] = useState<OwnerDashboardData['recentInvestors']>([]);
+  const [subscription, setSubscription] = useState<UserSubscription | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -45,6 +48,13 @@ export default function OwnerDashboard() {
         setIsLoading(true);
         setError('');
         console.log('[OwnerDashboard] Fetching dashboard data...');
+        
+        // Fetch subscription status
+        const subResponse = await apiClient.getUserSubscription();
+        if (subResponse.success && subResponse.data) {
+          setSubscription(subResponse.data);
+        }
+        
         const response = await apiClient.getOwnerDashboard();
         console.log('[OwnerDashboard] API response:', response);
         
@@ -150,6 +160,17 @@ export default function OwnerDashboard() {
     return 0;
   };
 
+  const getInvestorProjectName = (investor: OwnerDashboardData['recentInvestors'][number]) => {
+    // Handle case where project might be an object, string, or null/undefined
+    if (typeof investor.project === 'string') {
+      return investor.project;
+    }
+    if (investor.project && typeof investor.project === 'object') {
+      return (investor.project as any).title || (investor.project as any).name || 'Project';
+    }
+    return 'Project';
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -213,6 +234,11 @@ export default function OwnerDashboard() {
             {error}
           </div>
         )}
+
+        {/* Subscription Status */}
+        <div className="mb-6">
+          <SubscriptionStatus subscription={subscription} currentProjectCount={stats.totalProjects} />
+        </div>
 
         {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -356,7 +382,7 @@ export default function OwnerDashboard() {
                       <div key={investor._id} className="flex items-center justify-between p-3 border rounded-lg">
                         <div>
                           <p className="font-medium text-gray-900">{investor.name}</p>
-                          <p className="text-sm text-gray-600">{investor.project}</p>
+                          <p className="text-sm text-gray-600">{getInvestorProjectName(investor)}</p>
                         </div>
                         <div className="text-right">
                           <p className="font-medium text-gray-900">{formatCurrency(investor.amount)}</p>
@@ -479,7 +505,7 @@ export default function OwnerDashboard() {
                                 <span className="font-medium">{investor.name}</span>
                               </div>
                             </td>
-                            <td className="py-3 px-4 text-gray-600">{investor.project}</td>
+                            <td className="py-3 px-4 text-gray-600">{getInvestorProjectName(investor)}</td>
                             <td className="py-3 px-4 font-medium">{formatCurrency(investor.amount)}</td>
                             <td className="py-3 px-4 text-gray-600">{investor.date}</td>
                             <td className="py-3 px-4">

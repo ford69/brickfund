@@ -27,7 +27,8 @@ import {
   Info
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { apiClient } from '@/lib/api';
+import { apiClient, UserSubscription } from '@/lib/api';
+import { canCreateProject, getUpgradeMessage } from '@/lib/subscription-utils';
 
 interface ProjectFormData {
   // Basic Information
@@ -81,6 +82,9 @@ export default function ListProject() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState('');
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [subscription, setSubscription] = useState<UserSubscription | null>(null);
+  const [projectCount, setProjectCount] = useState(0);
+  const [checkingSubscription, setCheckingSubscription] = useState(true);
   
   const [formData, setFormData] = useState<ProjectFormData>({
     title: '',
@@ -114,6 +118,37 @@ export default function ListProject() {
     }],
     images: []
   });
+
+  // Check subscription and project count
+  useEffect(() => {
+    const checkSubscription = async () => {
+      if (!isAuthenticated) {
+        setCheckingSubscription(false);
+        return;
+      }
+
+      try {
+        const [subResponse, projectsResponse] = await Promise.all([
+          apiClient.getUserSubscription(),
+          apiClient.getAdminProjects({ status: 'all' }),
+        ]);
+
+        if (subResponse.success && subResponse.data) {
+          setSubscription(subResponse.data);
+        }
+
+        if (projectsResponse.success && projectsResponse.data) {
+          setProjectCount(projectsResponse.data.length);
+        }
+      } catch (error) {
+        console.error('Failed to check subscription:', error);
+      } finally {
+        setCheckingSubscription(false);
+      }
+    };
+
+    checkSubscription();
+  }, [isAuthenticated]);
 
   // Log component lifecycle and step changes
   useEffect(() => {
@@ -252,6 +287,16 @@ export default function ListProject() {
     
     if (!validateStep(currentStep)) {
       console.error('[ListProject] ❌ Validation failed, aborting submit');
+      return;
+    }
+
+    // Check subscription limits before submitting
+    if (!canCreateProject(subscription, projectCount)) {
+      const upgradeMessage = getUpgradeMessage(subscription?.tier || null);
+      setSubmitError(
+        `You've reached your project limit. ${upgradeMessage} ` +
+        `Please upgrade your subscription at /subscriptions or contact support.`
+      );
       return;
     }
 
@@ -499,6 +544,35 @@ export default function ListProject() {
             <div className="flex items-center">
               <CheckCircle className="h-5 w-5 mr-2" />
               Project submitted successfully! Your project has been saved to the database and is pending review. Redirecting...
+            </div>
+          </div>
+        )}
+
+        {/* Subscription Status Warning */}
+        {checkingSubscription ? (
+          <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+            <div className="flex items-center">
+              <Info className="h-5 w-5 mr-2" />
+              Checking subscription status...
+            </div>
+          </div>
+        ) : !canCreateProject(subscription, projectCount) && (
+          <div className="mb-6 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <AlertCircle className="h-5 w-5 mr-2 text-yellow-600" />
+                <div>
+                  <p className="text-sm font-medium text-yellow-900">
+                    Project Limit Reached
+                  </p>
+                  <p className="text-sm text-yellow-700 mt-1">
+                    {getUpgradeMessage(subscription?.tier || null)}
+                  </p>
+                </div>
+              </div>
+              <Link href="/subscriptions">
+                <Button size="sm" variant="outline">Upgrade Plan</Button>
+              </Link>
             </div>
           </div>
         )}

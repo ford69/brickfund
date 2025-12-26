@@ -28,14 +28,16 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiClient, Project, DocumentFile } from '@/lib/api';
+import { toast } from '@/hooks/use-toast';
 
 interface ProjectDetailClientProps {
   projectId: string;
 }
 
+
 export default function ProjectDetailClient({ projectId }: ProjectDetailClientProps) {
   const router = useRouter();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [project, setProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -104,17 +106,81 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
       return;
     }
 
-    setIsInvesting(true);
-    try {
-      await apiClient.createInvestment({
-        projectId,
-        amount: parseFloat(investmentAmount),
+    if (!user?.email) {
+      toast({
+        title: 'Error',
+        description: 'Please update your email address in your profile',
+        variant: 'destructive',
       });
-      router.push('/dashboard');
+      return;
+    }
+
+    const amount = parseFloat(investmentAmount);
+    if (isNaN(amount) || amount < project!.minimumInvestment) {
+      toast({
+        title: 'Invalid Amount',
+        description: `Minimum investment is ${formatCurrency(project!.minimumInvestment)}`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Check if investment amount exceeds remaining project capacity
+    const projectRemainingCapacity = project!.targetAmount - project!.raisedAmount;
+    if (amount > projectRemainingCapacity) {
+      toast({
+        title: 'Investment Amount Too High',
+        description: `The maximum investment amount is ${formatCurrency(projectRemainingCapacity)}. The project has already raised ${formatCurrency(project!.raisedAmount)} of ${formatCurrency(project!.targetAmount)}.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsInvesting(true);
+    setError('');
+
+    try {
+      // Initialize payment with backend
+      const paymentResponse = await apiClient.initializePayment({
+        projectId,
+        amount: amount * 100, // Convert to kobo/pesewas (smallest currency unit)
+        email: user.email,
+        metadata: {
+          projectId,
+          projectTitle: project!.title,
+          userId: user._id,
+          custom_fields: [
+            {
+              display_name: 'Project',
+              variable_name: 'project_title',
+              value: project!.title,
+            },
+          ],
+        },
+      });
+
+      if (!paymentResponse.success || !paymentResponse.data) {
+        throw new Error(paymentResponse.message || 'Failed to initialize payment');
+      }
+
+      // Get authorization URL (handle both authorization_url and authorizationUrl)
+      const authorizationUrl = paymentResponse.data.authorization_url || paymentResponse.data.authorizationUrl;
+      
+      if (!authorizationUrl) {
+        throw new Error('No authorization URL received from payment initialization');
+      }
+
+      // Redirect to Paystack checkout page (redirect-based flow)
+      window.location.href = authorizationUrl;
     } catch (err) {
       console.error('Investment failed:', err);
-      setError(err instanceof Error ? err.message : 'Investment failed');
-    } finally {
+      const errorMessage = err instanceof Error ? err.message : 'Investment failed';
+      setError(errorMessage);
+      toast({
+        title: 'Payment Failed',
+        description: errorMessage,
+        variant: 'destructive',
+      });
       setIsInvesting(false);
     }
   };
@@ -164,6 +230,8 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
   const progressPercentage = project.targetAmount
     ? (project.raisedAmount / project.targetAmount) * 100
     : 0;
+  const remainingCapacity = project.targetAmount - project.raisedAmount;
+  const isFullyFunded = remainingCapacity <= 0;
   const timelineItems =
     (((project as any)?.timeline ||
       (project as any)?.milestones) as Array<{
@@ -453,32 +521,53 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
 
                 {/* Investment Form */}
                 <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="investment-amount">Investment Amount (GHS)</Label>
-                    <Input
-                      id="investment-amount"
-                      type="number"
-                      value={investmentAmount}
-                      onChange={(e) => setInvestmentAmount(e.target.value)}
-                      min={project.minimumInvestment}
-                      placeholder={`Minimum: ${formatCurrency(project.minimumInvestment)}`}
-                    />
-                  </div>
+                  {isFullyFunded ? (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+                      <p className="text-sm font-medium text-green-800">
+                        This project has been fully funded!
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <div>
+                        <Label htmlFor="investment-amount">Investment Amount (GHS)</Label>
+                        <Input
+                          id="investment-amount"
+                          type="number"
+                          value={investmentAmount}
+                          onChange={(e) => setInvestmentAmount(e.target.value)}
+                          min={project.minimumInvestment}
+                          max={remainingCapacity}
+                          placeholder={`Minimum: ${formatCurrency(project.minimumInvestment)}`}
+                          disabled={isFullyFunded}
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Maximum: {formatCurrency(remainingCapacity)} remaining
+                        </p>
+                      </div>
 
-                  <Button
-                    onClick={handleInvest}
-                    disabled={isInvesting || !investmentAmount || parseFloat(investmentAmount) < project.minimumInvestment}
-                    className="w-full"
-                  >
-                    {isInvesting ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      'Invest Now'
-                    )}
-                  </Button>
+                      <Button
+                        onClick={handleInvest}
+                        disabled={
+                          isFullyFunded ||
+                          isInvesting || 
+                          !investmentAmount || 
+                          parseFloat(investmentAmount) < project.minimumInvestment ||
+                          parseFloat(investmentAmount) > remainingCapacity
+                        }
+                        className="w-full"
+                      >
+                        {isInvesting ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Processing...
+                          </>
+                        ) : (
+                          'Invest Now'
+                        )}
+                      </Button>
+                    </>
+                  )}
 
                   {!isAuthenticated && (
                     <p className="text-sm text-gray-600 text-center">

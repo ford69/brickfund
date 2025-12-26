@@ -109,8 +109,26 @@ export default function InvestmentHistory() {
   const getDistributions = (investment: Investment) =>
     ((investment as any).distributions as Array<{ date: string; amount: number }>) || [];
 
-  const getProjectLink = (investment: Investment) =>
-    `/projects/${(investment as any).projectId || (investment as any).project?._id || investment._id}`;
+  const getProjectLink = (investment: Investment) => {
+    // Safely extract project ID, handling cases where it might be an object or string
+    let projectId: string | undefined;
+    
+    if ((investment as any).projectId) {
+      projectId = typeof (investment as any).projectId === 'string' 
+        ? (investment as any).projectId 
+        : (investment as any).projectId?._id || String((investment as any).projectId);
+    } else if ((investment as any).project?._id) {
+      projectId = typeof (investment as any).project._id === 'string'
+        ? (investment as any).project._id
+        : String((investment as any).project._id);
+    } else if (investment._id) {
+      projectId = typeof investment._id === 'string'
+        ? investment._id
+        : String(investment._id);
+    }
+    
+    return `/projects/${projectId || 'unknown'}`;
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -153,10 +171,25 @@ export default function InvestmentHistory() {
     );
   });
 
-  const filteredTransactions = transactions.filter(transaction =>
-    transaction.project.toLowerCase().includes(normalizedSearch) ||
-    transaction.reference.toLowerCase().includes(normalizedSearch)
-  );
+  const getTransactionProjectName = (transaction: Transaction) => {
+    // Handle case where project might be an object, string, or null/undefined
+    if (typeof transaction.project === 'string') {
+      return transaction.project;
+    }
+    if (transaction.project && typeof transaction.project === 'object') {
+      return (transaction.project as any).title || (transaction.project as any).name || 'Project';
+    }
+    return 'Project';
+  };
+
+  const filteredTransactions = transactions.filter(transaction => {
+    const projectName = getTransactionProjectName(transaction).toLowerCase();
+    const reference = (transaction.reference || '').toLowerCase();
+    return (
+      projectName.includes(normalizedSearch) ||
+      reference.includes(normalizedSearch)
+    );
+  });
 
   const totalInvested = investments.reduce((sum, inv) => sum + (inv.amount || 0), 0);
   const totalCurrentValue = investments.reduce(
@@ -503,7 +536,7 @@ export default function InvestmentHistory() {
                                 <span className="ml-2 capitalize">{transaction.type}</span>
                               </div>
                             </td>
-                            <td className="py-3 px-4 text-gray-900">{transaction.project}</td>
+                            <td className="py-3 px-4 text-gray-900">{getTransactionProjectName(transaction)}</td>
                             <td className="py-3 px-4">
                               <span className={`font-medium ${
                                 transaction.type === 'investment' ? 'text-red-600' : 'text-green-600'
