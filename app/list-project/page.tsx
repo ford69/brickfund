@@ -158,10 +158,16 @@ export default function ListProject() {
     console.log('[ListProject] Has errors:', Object.keys(errors).length > 0);
   }, [currentStep, isLoading, errors]);
 
-  // Redirect if not authenticated
+  // Redirect if not authenticated (client-side only)
+  useEffect(() => {
+    if (!isAuthenticated) {
+      console.log('[ListProject] User not authenticated, redirecting to signin');
+      router.push('/signin');
+    }
+  }, [isAuthenticated, router]);
+
+  // Show nothing while checking authentication to prevent SSR issues
   if (!isAuthenticated) {
-    console.log('[ListProject] User not authenticated, redirecting to signin');
-    router.push('/signin');
     return null;
   }
 

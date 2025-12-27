@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -115,9 +115,15 @@ export default function AddProperty() {
     images: []
   });
 
-  // Redirect if not authenticated
+  // Redirect if not authenticated (client-side only)
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push('/signin');
+    }
+  }, [isAuthenticated, router]);
+
+  // Show nothing while checking authentication to prevent SSR issues
   if (!isAuthenticated) {
-    router.push('/signin');
     return null;
   }
 
