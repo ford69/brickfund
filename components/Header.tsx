@@ -53,7 +53,7 @@ export default function Header() {
         <div className="flex justify-between items-center h-16">
           <Link href="/" className="flex items-center">
             <Building2 className={`h-8 w-8 transition-colors ${isScrolled ? 'text-blue-700' : 'text-blue-700'}`} />
-            <span className={`ml-2 text-2xl font-bold transition-colors ${isScrolled ? 'text-gray-900' : 'text-blue-700'}`}>
+            <span className={`ml-2 text-2xl font-bold transition-colors ${isScrolled ? 'text-gray-900' : 'text-blue-500'}`}>
               BrickFund
             </span>
           </Link>
@@ -61,19 +61,19 @@ export default function Header() {
           <nav className="hidden md:flex space-x-8">
             <Link 
               href="/projects" 
-              className={`font-medium transition-colors hover:text-blue-700 ${isScrolled ? 'text-gray-700' : 'text-blue-700'}`}
+              className={`font-medium transition-colors hover:text-blue-700 ${isScrolled ? 'text-gray-700' : 'text-blue-500'}`}
             >
               Browse Projects
             </Link>
             <Link 
               href={user?.role === 'admin' ? '/admin' : '/dashboard'} 
-              className={`font-medium transition-colors hover:text-blue-700 ${isScrolled ? 'text-gray-700' : 'text-blue-700'}`}
+              className={`font-medium transition-colors hover:text-blue-700 ${isScrolled ? 'text-gray-700' : 'text-blue-500'}`}
             >
               Dashboard
             </Link>
             <a 
               href="#how-it-works" 
-              className={`font-medium transition-colors hover:text-blue-700 ${isScrolled ? 'text-gray-700' : 'text-blue-700'}`}
+              className={`font-medium transition-colors hover:text-blue-700 ${isScrolled ? 'text-gray-700' : 'text-blue-500'}`}
             >
               How It Works
             </a>
