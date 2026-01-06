@@ -1,7 +1,9 @@
 // API Configuration
 // Note: Make sure NEXT_PUBLIC_API_URL in .env.local matches your backend port
 // If backend runs on port 5001, set: NEXT_PUBLIC_API_URL=http://localhost:5001/api
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+// Normalize API_BASE_URL to always end with /api
+const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = rawApiUrl.endsWith('/api') ? rawApiUrl : `${rawApiUrl.replace(/\/$/, '')}/api`;
 
 // Currency formatting utility
 export const formatCurrency = (amount: number) => {
