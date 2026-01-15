@@ -45,21 +45,21 @@ export default function Dashboard() {
       try {
         setIsLoading(true);
         
-        // Use unified dashboard endpoint (automatically routes based on user role)
+        // Role-based routing: admins and developers should not see the investor dashboard
+        if (user?.role === 'admin') {
+          router.push('/admin');
+          return;
+        }
+        if (user?.role === 'owner') {
+          router.push('/owner-dashboard');
+          return;
+        }
+
+        // Use unified dashboard endpoint for investor data
         const dashboardResponse = await apiClient.getDashboard();
         
         if (dashboardResponse.success && dashboardResponse.data) {
-          const dashboardData = dashboardResponse.data;
-          
-          // Check if user is admin or developer and redirect to appropriate dashboard
-          if (user?.role === 'admin') {
-            router.push('/admin');
-            return;
-          }
-          if (user?.role === 'developer') {
-            router.push('/owner-dashboard');
-            return;
-          }
+          const dashboardData = dashboardResponse.data as InvestorDashboardData;
           
           // Handle investor dashboard data
           if (dashboardData.stats) {

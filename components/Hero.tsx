@@ -169,13 +169,6 @@ export default function Hero() {
                 </Button>
               </Link>
             </motion.div>
-            <motion.div variants={buttonVariants} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-              <Link href="/list-project">
-                <Button size="lg" variant="outline" className="px-10 py-6 text-lg bg-white/10 backdrop-blur-sm border-2 border-white/30 text-white hover:bg-white/20">
-                  List Your Project
-                </Button>
-              </Link>
-            </motion.div>
           </motion.div>
 
           {/* Feature Icons */}

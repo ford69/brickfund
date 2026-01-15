@@ -66,7 +66,13 @@ export default function Header() {
               Browse Projects
             </Link>
             <Link 
-              href={user?.role === 'admin' ? '/admin' : '/dashboard'} 
+              href={
+                user?.role === 'admin'
+                  ? '/admin'
+                  : user?.role === 'owner'
+                  ? '/owner-dashboard'
+                  : '/dashboard'
+              } 
               className={`font-medium transition-colors hover:text-blue-700 ${isScrolled ? 'text-gray-700' : 'text-blue-500'}`}
             >
               Dashboard
@@ -122,21 +128,37 @@ export default function Header() {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link href={user?.role === 'admin' ? '/admin' : '/dashboard'} className="flex items-center">
-                      {user?.role === 'admin' ? (
+                    <Link
+                      href={
+                        user?.role === 'admin'
+                          ? '/admin'
+                          : user?.role === 'owner'
+                          ? '/owner-dashboard'
+                          : '/dashboard'
+                      }
+                      className="flex items-center"
+                    >
+                      {user?.role === 'admin' && (
                         <>
                           <Shield className="mr-2 h-4 w-4" />
                           <span>Admin Dashboard</span>
                         </>
-                      ) : (
+                      )}
+                      {user?.role === 'owner' && (
+                        <>
+                          <Building2 className="mr-2 h-4 w-4" />
+                          <span>Owner Dashboard</span>
+                        </>
+                      )}
+                      {user?.role === 'investor' && (
                         <>
                           <User className="mr-2 h-4 w-4" />
-                          <span>Dashboard</span>
+                          <span>Investor Dashboard</span>
                         </>
                       )}
                     </Link>
                   </DropdownMenuItem>
-                  {user?.role === 'developer' && (
+                  {user?.role === 'owner' && (
                     <DropdownMenuItem asChild>
                       <Link href="/owner-dashboard" className="flex items-center">
                         <Building2 className="mr-2 h-4 w-4" />
@@ -201,7 +223,13 @@ export default function Header() {
                 Browse Projects
               </Link>
               <Link 
-                href={user?.role === 'admin' ? '/admin' : '/dashboard'} 
+                href={
+                  user?.role === 'admin'
+                    ? '/admin'
+                    : user?.role === 'owner'
+                    ? '/owner-dashboard'
+                    : '/dashboard'
+                } 
                 className={`font-medium transition-colors hover:text-blue-700 ${isScrolled ? 'text-gray-700' : 'text-white'}`}
                 onClick={() => setIsOpen(false)}
               >
@@ -240,22 +268,38 @@ export default function Header() {
                         </div>
                       </div>
                     </div>
-                    <Link href={user?.role === 'admin' ? '/admin' : '/dashboard'} onClick={() => setIsOpen(false)}>
+                    <Link
+                      href={
+                        user?.role === 'admin'
+                          ? '/admin'
+                          : user?.role === 'owner'
+                          ? '/owner-dashboard'
+                          : '/dashboard'
+                      }
+                      onClick={() => setIsOpen(false)}
+                    >
                       <Button variant="ghost" className="w-full justify-start">
-                        {user?.role === 'admin' ? (
+                        {user?.role === 'admin' && (
                           <>
                             <Shield className="h-4 w-4 mr-2" />
                             Admin Dashboard
                           </>
-                        ) : (
+                        )}
+                        {user?.role === 'owner' && (
+                          <>
+                            <Building2 className="h-4 w-4 mr-2" />
+                            Owner Dashboard
+                          </>
+                        )}
+                        {user?.role === 'investor' && (
                           <>
                             <User className="h-4 w-4 mr-2" />
-                            Dashboard
+                            Investor Dashboard
                           </>
                         )}
                       </Button>
                     </Link>
-                    {user?.role === 'developer' && (
+                    {user?.role === 'owner' && (
                       <Link href="/owner-dashboard" onClick={() => setIsOpen(false)}>
                         <Button variant="ghost" className="w-full justify-start">
                           <Building2 className="h-4 w-4 mr-2" />

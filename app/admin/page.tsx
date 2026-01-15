@@ -81,7 +81,7 @@ interface AccountApproval {
   firstName: string;
   lastName: string;
   email: string;
-  role: 'user' | 'developer';
+  role: 'investor' | 'owner';
   status: 'pending' | 'approved' | 'rejected';
   createdAt: string;
   companyName?: string;
@@ -112,7 +112,7 @@ export default function AdminDashboard() {
   const [investors, setInvestors] = useState<User[]>([]);
   const [developers, setDevelopers] = useState<User[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [userFilter, setUserFilter] = useState<'all' | 'investor' | 'developer'>('all');
+  const [userFilter, setUserFilter] = useState<'all' | 'investor' | 'owner'>('all');
   
   // Projects Management
   const [pendingProjects, setPendingProjects] = useState<Project[]>([]);
@@ -177,8 +177,8 @@ export default function AdminDashboard() {
       const usersResponse = await apiClient.getAdminUsers({});
       if (usersResponse.success && usersResponse.data) {
         setUsers(usersResponse.data);
-        setInvestors(usersResponse.data.filter((u: User) => u.role === 'user'));
-        setDevelopers(usersResponse.data.filter((u: User) => u.role === 'developer'));
+        setInvestors(usersResponse.data.filter((u: User) => u.role === 'investor'));
+        setDevelopers(usersResponse.data.filter((u: User) => u.role === 'owner'));
       }
 
       // Fetch pending account approvals
@@ -401,7 +401,8 @@ export default function AdminDashboard() {
       u.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       u.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       u.email.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = userFilter === 'all' || u.role === userFilter;
+    const matchesFilter =
+      userFilter === 'all' || u.role === (userFilter === 'investor' ? 'investor' : 'owner');
     return matchesSearch && matchesFilter;
   });
 
@@ -785,8 +786,8 @@ export default function AdminDashboard() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Users</SelectItem>
-                        <SelectItem value="user">Investors</SelectItem>
-                        <SelectItem value="developer">Developers</SelectItem>
+                        <SelectItem value="investor">Investors</SelectItem>
+                        <SelectItem value="owner">Developers</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -813,8 +814,8 @@ export default function AdminDashboard() {
                           </TableCell>
                           <TableCell>{user.email}</TableCell>
                           <TableCell>
-                            <Badge className={user.role === 'developer' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}>
-                              {user.role === 'developer' ? 'Developer' : 'Investor'}
+                            <Badge className={user.role === 'owner' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}>
+                              {user.role === 'owner' ? 'Developer' : 'Investor'}
                             </Badge>
                           </TableCell>
                           <TableCell>
@@ -1030,8 +1031,8 @@ export default function AdminDashboard() {
                             </h3>
                             <p className="text-gray-600 mb-1">Email: {account.email}</p>
                             <p className="text-gray-500 text-sm">
-                              Role: <Badge className={account.role === 'developer' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}>
-                                {account.role === 'developer' ? 'Developer' : 'Investor'}
+                              Role: <Badge className={account.role === 'owner' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}>
+                                {account.role === 'owner' ? 'Developer' : 'Investor'}
                               </Badge>
                             </p>
                             {account.companyName && (
@@ -1365,8 +1366,8 @@ export default function AdminDashboard() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="user">Investor</SelectItem>
-                  <SelectItem value="developer">Developer</SelectItem>
+                  <SelectItem value="investor">Investor</SelectItem>
+                  <SelectItem value="owner">Developer</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
                 </SelectContent>
               </Select>

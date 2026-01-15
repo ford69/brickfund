@@ -15,7 +15,7 @@ export default function SignUp() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [userType, setUserType] = useState<'investor' | 'developer'>('investor');
+  const [userType, setUserType] = useState<'investor' | 'owner'>('investor');
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -57,11 +57,11 @@ export default function SignUp() {
         password: formData.password,
         phone: formData.phone || undefined,
         role: userType,
-        companyName: userType === 'developer' ? formData.companyName : undefined
+        companyName: userType === 'owner' ? formData.companyName : undefined
       });
       
       // Redirect based on user type
-      if (userType === 'developer') {
+      if (userType === 'owner') {
         router.push('/owner-dashboard');
       } else {
         router.push('/dashboard');
@@ -73,7 +73,7 @@ export default function SignUp() {
     }
   };
 
-  const handleUserTypeChange = (type: 'investor' | 'developer') => {
+  const handleUserTypeChange = (type: 'investor' | 'owner') => {
     setUserType(type);
     setFormData(prev => ({
       ...prev,
@@ -149,24 +149,24 @@ export default function SignUp() {
                 
                 <button
                   type="button"
-                  onClick={() => handleUserTypeChange('developer')}
+                  onClick={() => handleUserTypeChange('owner')}
                   className={`p-4 border-2 rounded-lg text-left transition-all duration-200 ${
-                    userType === 'developer'
+                    userType === 'owner'
                       ? 'border-blue-500 bg-blue-50 text-blue-700'
                       : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
                   }`}
                 >
                   <div className="flex items-center space-x-3">
                     <div className={`p-2 rounded-lg ${
-                      userType === 'developer' ? 'bg-blue-100' : 'bg-gray-100'
+                      userType === 'owner' ? 'bg-blue-100' : 'bg-gray-100'
                     }`}>
                       <Briefcase className={`h-5 w-5 ${
-                        userType === 'developer' ? 'text-blue-600' : 'text-gray-600'
+                        userType === 'owner' ? 'text-blue-600' : 'text-gray-600'
                       }`} />
                     </div>
                     <div>
-                      <h3 className="font-medium">Project Developer</h3>
-                      <p className="text-sm opacity-75">List and manage projects</p>
+                      <h3 className="font-medium">Real Estate Developer</h3>
+                      <p className="text-sm opacity-75">List and manage real estate projects</p>
                     </div>
                   </div>
                 </button>
@@ -242,8 +242,8 @@ export default function SignUp() {
                 </div>
               </div>
 
-              {/* Company Name Field - Only show for developers */}
-              {userType === 'developer' && (
+              {/* Company Name Field - Only show for owners */}
+              {userType === 'owner' && (
                 <div>
                   <Label htmlFor="companyName">Company Name</Label>
                   <div className="mt-1 relative">

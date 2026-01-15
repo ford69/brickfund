@@ -146,11 +146,6 @@ export default function ProjectsPage() {
                 <User className="h-5 w-5" />
               </Button>
             </Link>
-            <Link href="/list-project">
-              <Button className="bg-blue-700 hover:bg-blue-800 text-white">
-                List Project
-              </Button>
-            </Link>
           </div>
         </div>
         </div>

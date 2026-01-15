@@ -14,7 +14,10 @@ interface SubscriptionStatusProps {
 }
 
 export default function SubscriptionStatus({ subscription, currentProjectCount = 0 }: SubscriptionStatusProps) {
-  if (!subscription || subscription.status !== 'active') {
+  // Show the "No Active Subscription" notice only when the user truly has no
+  // subscription at all. Once a plan has been selected (any subscription
+  // record exists), we hide this alert and instead show the plan details.
+  if (!subscription) {
     return (
       <Card className="border-yellow-200 bg-yellow-50">
         <CardContent className="p-4">

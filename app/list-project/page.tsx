@@ -158,16 +158,21 @@ export default function ListProject() {
     console.log('[ListProject] Has errors:', Object.keys(errors).length > 0);
   }, [currentStep, isLoading, errors]);
 
-  // Redirect if not authenticated (client-side only)
+  // Redirect if not authenticated or not an owner/developer (client-side only)
   useEffect(() => {
     if (!isAuthenticated) {
       console.log('[ListProject] User not authenticated, redirecting to signin');
       router.push('/signin');
+      return;
     }
-  }, [isAuthenticated, router]);
+    if (user && user.role !== 'owner') {
+      console.log('[ListProject] User not an owner, redirecting to investor dashboard');
+      router.push('/dashboard');
+    }
+  }, [isAuthenticated, user, router]);
 
-  // Show nothing while checking authentication to prevent SSR issues
-  if (!isAuthenticated) {
+  // Show nothing while checking authentication/authorization to prevent SSR issues
+  if (!isAuthenticated || (user && user.role !== 'owner')) {
     return null;
   }
 

@@ -35,7 +35,11 @@ export interface User {
   lastName: string;
   email: string;
   phone?: string;
-  role: 'user' | 'admin' | 'developer';
+  // Role-based access:
+  // - 'investor' → standard investing user
+  // - 'owner' → project owner / owner dashboard
+  // - 'admin' → platform administrator
+  role: 'investor' | 'owner' | 'admin';
   kycStatus: 'pending' | 'verified' | 'rejected';
   isActive: boolean;
   isEmailVerified: boolean;
@@ -751,7 +755,7 @@ class ApiClient {
       firstName: string;
       lastName: string;
       email: string;
-      role: 'user' | 'developer';
+      role: 'investor' | 'owner';
       status: 'pending' | 'approved' | 'rejected';
       createdAt: string;
       companyName?: string;

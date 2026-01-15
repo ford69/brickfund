@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -27,8 +28,11 @@ import {
 import { apiClient, OwnerDashboardData, UserSubscription } from '@/lib/api';
 import { getFeatureLimits } from '@/lib/subscription-utils';
 import SubscriptionStatus from '@/components/SubscriptionStatus';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function OwnerDashboard() {
+  const router = useRouter();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
   const [stats, setStats] = useState({
     totalProjects: 0,
@@ -43,6 +47,12 @@ export default function OwnerDashboard() {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    // Only allow owner accounts to access this dashboard
+    if (user && user.role !== 'owner') {
+      router.push('/dashboard');
+      return;
+    }
+
     const fetchDashboard = async () => {
       try {
         setIsLoading(true);
@@ -103,7 +113,7 @@ export default function OwnerDashboard() {
     };
 
     fetchDashboard();
-  }, []);
+  }, [user, router]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-GH', {
@@ -217,12 +227,6 @@ export default function OwnerDashboard() {
                 <Button className="bg-green-700 hover:bg-green-800 text-white">
                   <Plus className="h-4 w-4 mr-2" />
                   Add Property
-                </Button>
-              </Link>
-              <Link href="/list-project">
-                <Button className="bg-blue-700 hover:bg-blue-800 text-white">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create New Project
                 </Button>
               </Link>
             </div>
