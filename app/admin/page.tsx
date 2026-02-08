@@ -57,7 +57,8 @@ import {
   Menu,
   ChevronLeft,
   ChevronRight,
-  LayoutDashboard
+  LayoutDashboard,
+  Store
 } from 'lucide-react';
 import { apiClient, Project, User } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
@@ -88,7 +89,7 @@ interface AccountApproval {
 }
 
 export default function AdminDashboard() {
-  const { user, logout } = useAuth();
+  const { user, logout, isLoading: authLoading } = useAuth();
   const router = useRouter();
   
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -133,12 +134,25 @@ export default function AdminDashboard() {
   const [userEditData, setUserEditData] = useState<Partial<User>>({});
 
   useEffect(() => {
+    // Wait for auth to finish loading
+    if (authLoading) {
+      return;
+    }
+
+    // Redirect if not admin
     if (user && user.role !== 'admin') {
       router.push('/dashboard');
       return;
     }
-    fetchAdminData();
-  }, [user, router]);
+
+    // Only fetch data if user is authenticated and is admin
+    if (user && user.role === 'admin') {
+      fetchAdminData();
+    } else if (!user) {
+      // If no user, redirect to sign in
+      router.push('/signin?redirect=/admin');
+    }
+  }, [user, router, authLoading]);
 
   const fetchAdminData = async () => {
     try {
@@ -422,22 +436,30 @@ export default function AdminDashboard() {
     }
   };
 
-  if (isLoading) {
+  if (authLoading || isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <RefreshCw className="h-8 w-8 animate-spin text-blue-700 mx-auto mb-4" />
-          <p className="text-gray-600">Loading admin dashboard...</p>
+          <p className="text-gray-600">
+            {authLoading ? 'Checking authentication...' : 'Loading admin dashboard...'}
+          </p>
         </div>
       </div>
     );
   }
 
-  const sidebarItems = [
+  const sidebarItems: Array<{
+    id: string;
+    label: string;
+    icon: any;
+    link?: string;
+  }> = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
     { id: 'users', label: 'Users', icon: Users },
     { id: 'projects', label: 'Projects', icon: Building2 },
     { id: 'approvals', label: 'Approvals', icon: CheckCircle },
+    { id: 'marketplace', label: 'Marketplace', icon: Store, link: '/admin/marketplace' },
     { id: 'stats', label: 'Statistics', icon: BarChart3 },
     { id: 'activity', label: 'Activity', icon: Activity },
   ];
@@ -490,6 +512,24 @@ export default function AdminDashboard() {
             {sidebarItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
+              const hasLink = 'link' in item && item.link;
+              
+              if (hasLink) {
+                return (
+                  <Link
+                    key={item.id}
+                    href={item.link}
+                    className={`w-full flex items-center px-3 py-2.5 rounded-lg transition-colors ${
+                      'text-blue-100 hover:bg-blue-600 hover:text-white'
+                    }`}
+                    title={!sidebarOpen ? item.label : undefined}
+                  >
+                    <Icon className={`h-5 w-5 flex-shrink-0 ${sidebarOpen ? 'mr-3' : 'mx-auto'}`} />
+                    {sidebarOpen && <span className="truncate">{item.label}</span>}
+                  </Link>
+                );
+              }
+              
               return (
                 <button
                   key={item.id}

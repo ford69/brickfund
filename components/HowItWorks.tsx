@@ -11,30 +11,26 @@ export default function HowItWorks() {
       icon: Search,
       title: 'Discover Projects',
       description: 'Browse verified real estate projects from trusted developers with detailed financials and projections.',
-      color: 'blue',
-      gradient: 'from-blue-500 to-cyan-500'
+      gradient: 'from-primary to-primary/80',
     },
     {
       icon: FileCheck,
       title: 'Complete Verification',
       description: 'Complete our secure KYC process to ensure compliance and protect all investors on the platform.',
-      color: 'green',
-      gradient: 'from-green-500 to-emerald-500'
+      gradient: 'from-brand-brown-500 to-brand-brown-600',
     },
     {
       icon: DollarSign,
       title: 'Invest Securely',
       description: 'Invest as little as $100 with funds held in escrow until project milestones are achieved.',
-      color: 'purple',
-      gradient: 'from-purple-500 to-pink-500'
+      gradient: 'from-primary to-primary/80',
     },
     {
       icon: TrendingUp,
       title: 'Earn Returns',
       description: 'Track your investments and receive returns as projects reach completion and generate revenue.',
-      color: 'orange',
-      gradient: 'from-orange-500 to-red-500'
-    }
+      gradient: 'from-brand-brown-500 to-brand-brown-600',
+    },
   ];
 
   const containerVariants = {
@@ -74,32 +70,31 @@ export default function HowItWorks() {
   };
 
   return (
-    <section id="how-it-works" className="py-20 bg-gradient-to-b from-white to-gray-50 relative overflow-hidden">
-      {/* Background decorative elements */}
-      <div className="absolute inset-0 opacity-5">
-        <div className="absolute top-1/4 left-0 w-96 h-96 bg-blue-500 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-0 w-96 h-96 bg-purple-500 rounded-full blur-3xl" />
+    <section id="how-it-works" className="py-16 sm:py-20 lg:py-24 bg-muted/40 relative overflow-hidden">
+      <div className="absolute inset-0 opacity-30">
+        <div className="absolute top-1/4 left-0 w-96 h-96 bg-primary rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 right-0 w-96 h-96 bg-brand-brown-400 rounded-full blur-3xl" />
       </div>
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
-          className="text-center mb-16"
-          initial={{ opacity: 0, y: -30 }}
+          className="text-center mb-12 sm:mb-16"
+          initial={{ opacity: 0, y: -20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
+          transition={{ duration: 0.5 }}
         >
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-3 tracking-tight">
             How BrickFund Works
           </h2>
-          <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-            Start your real estate investment journey in four simple steps. 
-            Our platform makes it easy and secure to build wealth through property investments.
+          <p className="text-base sm:text-lg text-muted-foreground max-w-3xl mx-auto">
+            Start your real estate investment journey in four simple steps. Our platform makes it
+            easy and secure to build wealth through property investments.
           </p>
         </motion.div>
 
         <motion.div
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8 mb-12 sm:mb-16"
           variants={containerVariants}
           initial="hidden"
           whileInView="visible"
@@ -116,9 +111,9 @@ export default function HowItWorks() {
               >
                 {/* Connection Line (Desktop only) */}
                 {index < steps.length - 1 && (
-                  <div className="hidden lg:block absolute top-16 left-full w-full h-0.5 bg-gradient-to-r from-gray-300 to-transparent">
+                  <div className="hidden lg:block absolute top-16 left-full w-full h-0.5 bg-gradient-to-r from-border to-transparent">
                     <motion.div
-                      className="absolute right-0 top-1/2 transform -translate-y-1/2 w-3 h-3 bg-blue-500 rounded-full"
+                      className="absolute right-0 top-1/2 transform -translate-y-1/2 w-2.5 h-2.5 bg-primary rounded-full"
                       initial={{ scale: 0 }}
                       whileInView={{ scale: 1 }}
                       viewport={{ once: true }}
@@ -130,7 +125,7 @@ export default function HowItWorks() {
                 <div className="relative mb-6">
                   {/* Step Number */}
                   <motion.div
-                    className="absolute -top-2 -left-2 w-8 h-8 bg-gradient-to-br from-gray-800 to-gray-900 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-lg z-10"
+                    className="absolute -top-2 -left-2 w-8 h-8 bg-foreground rounded-full flex items-center justify-center text-background text-sm font-bold shadow-lg z-10"
                     initial={{ scale: 0 }}
                     whileInView={{ scale: 1 }}
                     viewport={{ once: true }}
@@ -151,7 +146,7 @@ export default function HowItWorks() {
                 </div>
                 
                 <motion.h3
-                  className="text-xl font-bold text-gray-900 mb-3"
+                  className="text-lg sm:text-xl font-bold text-foreground mb-2 sm:mb-3"
                   initial={{ opacity: 0 }}
                   whileInView={{ opacity: 1 }}
                   viewport={{ once: true }}
@@ -161,7 +156,7 @@ export default function HowItWorks() {
                 </motion.h3>
                 
                 <motion.p
-                  className="text-gray-600 leading-relaxed"
+                  className="text-muted-foreground text-sm sm:text-base leading-relaxed"
                   initial={{ opacity: 0 }}
                   whileInView={{ opacity: 1 }}
                   viewport={{ once: true }}
@@ -175,7 +170,7 @@ export default function HowItWorks() {
         </motion.div>
 
         <motion.div
-          className="bg-gradient-to-r from-blue-600 via-blue-700 to-purple-700 rounded-3xl p-8 md:p-12 text-center text-white relative overflow-hidden"
+          className="bg-foreground rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-12 text-center text-background relative overflow-hidden"
           initial={{ opacity: 0, y: 50 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
@@ -207,29 +202,29 @@ export default function HowItWorks() {
               Join thousands of investors who are already earning returns through real estate crowdfunding.
             </motion.p>
             <motion.div
-              className="flex flex-col sm:flex-row gap-4 justify-center"
+              className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.4 }}
             >
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                 <Link href="/projects">
                   <Button
                     size="lg"
-                    className="bg-white text-blue-700 font-semibold py-6 px-10 text-lg hover:bg-gray-100 transition-all shadow-lg hover:shadow-xl"
+                    className="bg-background text-foreground font-semibold py-5 sm:py-6 px-8 sm:px-10 text-base sm:text-lg hover:bg-background/90 transition-all rounded-xl shadow-lg"
                   >
                     Start Investing Now
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
                 </Link>
               </motion.div>
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                 <Link href="/how-it-works">
                   <Button
                     size="lg"
                     variant="outline"
-                    className="border-2 border-white text-white font-semibold py-6 px-10 text-lg hover:bg-white hover:text-blue-700 transition-all backdrop-blur-sm"
+                    className="border-2 border-background/50 text-background font-semibold py-5 sm:py-6 px-8 sm:px-10 text-base sm:text-lg hover:bg-background hover:text-foreground transition-all rounded-xl"
                   >
                     Learn More
                   </Button>

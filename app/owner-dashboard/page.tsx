@@ -193,8 +193,8 @@ export default function OwnerDashboard() {
               <Badge className="ml-4 bg-purple-100 text-purple-800">Owner</Badge>
             </Link>
             <div className="flex items-center space-x-4">
-              <Link href="/dashboard">
-                <Button variant="ghost">Investor Dashboard</Button>
+              <Link href="/marketplace">
+                <Button variant="ghost">Marketplace</Button>
               </Link>
               <Link href="/projects">
                 <Button variant="ghost">Browse Projects</Button>

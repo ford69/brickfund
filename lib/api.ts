@@ -262,6 +262,40 @@ export interface UserAddOn {
   createdAt: string;
 }
 
+export interface MarketplaceItem {
+  _id: string;
+  name: string;
+  description: string;
+  category: string;
+  price: number;
+  currency: string;
+  image?: string;
+  imageUrl?: string; // Cloudinary URL from backend
+  images?: string[];
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Get display image URL for a marketplace item (backend may use imageUrl, image, or images) */
+export function getMarketplaceItemImageUrl(item: MarketplaceItem | null | undefined): string | null {
+  if (!item) return null;
+  return item.imageUrl ?? item.image ?? (item.images && item.images[0]) ?? null;
+}
+
+export interface MarketplacePurchase {
+  _id: string;
+  userId: string;
+  itemId: string;
+  item?: MarketplaceItem;
+  amount: number;
+  currency: string;
+  status: 'pending' | 'completed' | 'failed' | 'cancelled';
+  paymentReference?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // API Client Class
 class ApiClient {
   private baseURL: string;
@@ -280,9 +314,12 @@ class ApiClient {
     const isFormData =
       typeof FormData !== 'undefined' && options.body instanceof FormData;
 
+    // Always get the latest token from localStorage to ensure it's up-to-date
+    const currentToken = this.getToken();
+
     const headers: HeadersInit = {
       ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
-      ...(this.token && { Authorization: `Bearer ${this.token}` }),
+      ...(currentToken && { Authorization: `Bearer ${currentToken}` }),
       ...(options.headers || {}),
     };
     
@@ -343,6 +380,19 @@ class ApiClient {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('token');
     }
+  }
+
+  // Get current token from localStorage (always fresh)
+  private getToken(): string | null {
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('token');
+      // Update instance token if it exists
+      if (token) {
+        this.token = token;
+      }
+      return token;
+    }
+    return this.token;
   }
 
   // Auth API
@@ -945,6 +995,125 @@ class ApiClient {
 
   async checkSubscriptionFeature(feature: string) {
     return this.request<{ allowed: boolean; reason?: string }>(`/subscriptions/check-feature/${feature}`);
+  }
+
+  // Marketplace API (Admin)
+  // NOTE: Backend must implement /admin/marketplace/items endpoints that accept 'admin' role
+  // These endpoints should be separate from /marketplace/items which is for 'owner' role
+  async getMarketplaceItems(params?: { page?: number; limit?: number; category?: string; isActive?: boolean }) {
+    const searchParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          searchParams.append(key, value.toString());
+        }
+      });
+    }
+    const queryString = searchParams.toString();
+    // Use admin endpoint for admin operations - requires backend to accept 'admin' role
+    const endpoint = queryString ? `/admin/marketplace/items?${queryString}` : '/admin/marketplace/items';
+    return this.request<MarketplaceItem[]>(endpoint);
+  }
+
+  async getMarketplaceItem(itemId: string) {
+    // Try admin endpoint first, fallback to regular endpoint
+    return this.request<MarketplaceItem>(`/admin/marketplace/items/${itemId}`);
+  }
+
+  async createMarketplaceItem(itemData: {
+    name: string;
+    description: string;
+    category: string;
+    price: number;
+    currency: string;
+    image?: string;
+    images?: string[];
+    isActive?: boolean;
+  }) {
+    // Use admin endpoint for admin operations - requires backend to accept 'admin' role
+    // Backend endpoint: POST /admin/marketplace/items
+    // Required role: 'admin'
+    return this.request<MarketplaceItem>('/admin/marketplace/items', {
+      method: 'POST',
+      body: JSON.stringify(itemData),
+    });
+  }
+
+  /**
+   * Create marketplace item with image upload (multipart/form-data).
+   * Single request to POST /admin/marketplace/items/with-image
+   */
+  async createMarketplaceItemWithImage(formData: FormData) {
+    return this.request<MarketplaceItem>('/admin/marketplace/items/with-image', {
+      method: 'POST',
+      body: formData,
+    });
+  }
+
+  async updateMarketplaceItem(itemId: string, itemData: Partial<MarketplaceItem>) {
+    // Use admin endpoint for admin operations
+    return this.request<MarketplaceItem>(`/admin/marketplace/items/${itemId}`, {
+      method: 'PUT',
+      body: JSON.stringify(itemData),
+    });
+  }
+
+  async deleteMarketplaceItem(itemId: string) {
+    // Use admin endpoint for admin operations
+    return this.request(`/admin/marketplace/items/${itemId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async toggleMarketplaceItemStatus(itemId: string, isActive: boolean) {
+    // Use admin endpoint for admin operations
+    return this.request<MarketplaceItem>(`/admin/marketplace/items/${itemId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ isActive }),
+    });
+  }
+
+  // Marketplace API (Real Estate - View & Purchase)
+  async getActiveMarketplaceItems(params?: { page?: number; limit?: number; category?: string }) {
+    const searchParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          searchParams.append(key, value.toString());
+        }
+      });
+    }
+    const queryString = searchParams.toString();
+    const endpoint = queryString ? `/marketplace/items/active?${queryString}` : '/marketplace/items/active';
+    return this.request<MarketplaceItem[]>(endpoint);
+  }
+
+  async initializeMarketplacePurchase(itemId: string) {
+    return this.request<{
+      authorization_url?: string;
+      authorizationUrl?: string;
+      access_code?: string;
+      accessCode?: string;
+      reference: string;
+      paymentId?: string;
+    }>('/marketplace/purchase/initialize', {
+      method: 'POST',
+      body: JSON.stringify({ itemId }),
+    });
+  }
+
+  async getMarketplacePurchases(params?: { page?: number; limit?: number }) {
+    const searchParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          searchParams.append(key, value.toString());
+        }
+      });
+    }
+    const queryString = searchParams.toString();
+    const endpoint = queryString ? `/marketplace/purchases?${queryString}` : '/marketplace/purchases';
+    return this.request<MarketplacePurchase[]>(endpoint);
   }
 }
 
