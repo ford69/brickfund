@@ -60,7 +60,7 @@ import {
   LayoutDashboard,
   Store
 } from 'lucide-react';
-import { apiClient, Project, User } from '@/lib/api';
+import { apiClient, Project, User, getKycDocumentUrls, hasAnyKycDocuments } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 
@@ -133,6 +133,19 @@ export default function AdminDashboard() {
   const [userEditDialogOpen, setUserEditDialogOpen] = useState(false);
   const [userEditData, setUserEditData] = useState<Partial<User>>({});
 
+  // KYC Review
+  const [kycPendingUsers, setKycPendingUsers] = useState<User[]>([]);
+  const [selectedKycUser, setSelectedKycUser] = useState<User | null>(null);
+  const [kycDocumentsOpen, setKycDocumentsOpen] = useState(false);
+  const [kycDocumentsData, setKycDocumentsData] = useState<{
+    user: { firstName: string; lastName: string; email: string; role: string; companyName?: string; kycStatus: string };
+    kycDocuments?: { idFront?: string | null; idBack?: string | null; proofOfAddress?: string | null; bankStatement?: string | null };
+    documents?: Array<{ type: string; label: string; url: string }>;
+    hasUploadedDocuments: boolean;
+  } | null>(null);
+  const [kycDocumentsLoading, setKycDocumentsLoading] = useState(false);
+  const [kycReviewReason, setKycReviewReason] = useState('');
+
   useEffect(() => {
     // Wait for auth to finish loading
     if (authLoading) {
@@ -201,6 +214,15 @@ export default function AdminDashboard() {
         setPendingAccounts(pendingAccountsResponse.data);
       }
 
+      // Fetch KYC pending users (handle both data and data.users shapes)
+      const kycResponse = await apiClient.getKycPendingUsers();
+      if (kycResponse.success && kycResponse.data) {
+        const raw = kycResponse.data as any;
+        const list = Array.isArray(raw) ? raw : (Array.isArray(raw?.users) ? raw.users : []);
+        setKycPendingUsers(list);
+      } else {
+        setKycPendingUsers([]);
+      }
     } catch (error) {
       console.error('Error fetching admin data:', error);
       toast({
@@ -410,6 +432,60 @@ export default function AdminDashboard() {
     setUserEditDialogOpen(true);
   };
 
+  const openKycDocuments = async (user: User) => {
+    setSelectedKycUser(user);
+    setKycDocumentsOpen(true);
+    setKycDocumentsData(null);
+    setKycDocumentsLoading(true);
+    setKycReviewReason('');
+    try {
+      const response = await apiClient.getKycDocumentsForUser(user._id);
+      if (response.success && response.data) {
+        setKycDocumentsData(response.data as any);
+      }
+    } catch (err) {
+      toast({ title: 'Error', description: 'Failed to load KYC documents', variant: 'destructive' });
+    } finally {
+      setKycDocumentsLoading(false);
+    }
+  };
+
+  const handleKycApprove = async (userId: string) => {
+    try {
+      const response = await apiClient.approveKyc(userId, kycReviewReason);
+      if (response.success) {
+        toast({ title: 'Success', description: 'KYC approved successfully' });
+        setKycDocumentsOpen(false);
+        setSelectedKycUser(null);
+        setKycDocumentsData(null);
+        setKycReviewReason('');
+        fetchAdminData();
+      }
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'Failed to approve KYC', variant: 'destructive' });
+    }
+  };
+
+  const handleKycReject = async (userId: string) => {
+    if (!kycReviewReason.trim()) {
+      toast({ title: 'Error', description: 'Please provide a reason for rejection', variant: 'destructive' });
+      return;
+    }
+    try {
+      const response = await apiClient.rejectKyc(userId, kycReviewReason);
+      if (response.success) {
+        toast({ title: 'Success', description: 'KYC rejected' });
+        setKycDocumentsOpen(false);
+        setSelectedKycUser(null);
+        setKycDocumentsData(null);
+        setKycReviewReason('');
+        fetchAdminData();
+      }
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'Failed to reject KYC', variant: 'destructive' });
+    }
+  };
+
   const filteredUsers = users.filter((u) => {
     const matchesSearch = 
       u.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -419,6 +495,10 @@ export default function AdminDashboard() {
       userFilter === 'all' || u.role === (userFilter === 'investor' ? 'investor' : 'owner');
     return matchesSearch && matchesFilter;
   });
+
+  const hasAnyKycUrl = (u: User) => {
+    return hasAnyKycDocuments(u.kycDocuments) || u.hasUploadedDocuments === true;
+  };
 
   const getBadgeColor = (status: string) => {
     switch (status) {
@@ -459,6 +539,7 @@ export default function AdminDashboard() {
     { id: 'users', label: 'Users', icon: Users },
     { id: 'projects', label: 'Projects', icon: Building2 },
     { id: 'approvals', label: 'Approvals', icon: CheckCircle },
+    { id: 'kyc', label: 'KYC Review', icon: FileText },
     { id: 'marketplace', label: 'Marketplace', icon: Store, link: '/admin/marketplace' },
     { id: 'stats', label: 'Statistics', icon: BarChart3 },
     { id: 'activity', label: 'Activity', icon: Activity },
@@ -514,7 +595,7 @@ export default function AdminDashboard() {
               const isActive = activeTab === item.id;
               const hasLink = 'link' in item && item.link;
               
-              if (hasLink) {
+              if (hasLink && item.link) {
                 return (
                   <Link
                     key={item.id}
@@ -1112,6 +1193,59 @@ export default function AdminDashboard() {
             </Card>
           </TabsContent>
 
+          {/* KYC Review Tab */}
+          <TabsContent value="kyc" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>KYC Verification</CardTitle>
+                <CardDescription>
+                  View and approve KYC documents for users pending verification
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {kycPendingUsers.length > 0 ? (
+                  <div className="space-y-4">
+                    {kycPendingUsers.map((u) => (
+                      <div key={u._id} className="p-6 bg-white rounded-lg border border-gray-200">
+                        <div className="flex justify-between items-start mb-4">
+                          <div>
+                            <h3 className="text-gray-900 font-semibold text-lg mb-2">
+                              {u.firstName} {u.lastName}
+                            </h3>
+                            <p className="text-gray-600 mb-1">Email: {u.email}</p>
+                            <p className="text-gray-500 text-sm">
+                              Role: <Badge className={u.role === 'owner' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}>
+                                {u.role === 'owner' ? 'Developer' : 'Investor'}
+                              </Badge>
+                            </p>
+                            {u.companyName && (
+                              <p className="text-gray-500 text-sm mt-1">Company: {u.companyName}</p>
+                            )}
+                          </div>
+                          <Badge className={getBadgeColor(u.kycStatus)}>{u.kycStatus}</Badge>
+                        </div>
+                        <div className="flex flex-wrap gap-2 items-center">
+                          {(u.hasUploadedDocuments === false || !hasAnyKycUrl(u)) && (
+                            <span className="text-sm text-amber-600">No documents uploaded</span>
+                          )}
+                          <Button size="sm" variant="outline" onClick={() => openKycDocuments(u)}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            View documents
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4 opacity-50" />
+                    <p className="text-gray-600">No KYC documents pending review</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* Statistics Tab */}
           <TabsContent value="stats" className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1349,6 +1483,96 @@ export default function AdminDashboard() {
               Approve
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* KYC Documents Dialog */}
+      <Dialog open={kycDocumentsOpen} onOpenChange={setKycDocumentsOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>KYC Documents</DialogTitle>
+            <DialogDescription>
+              {selectedKycUser && `${selectedKycUser.firstName} ${selectedKycUser.lastName}`}
+            </DialogDescription>
+          </DialogHeader>
+          {kycDocumentsLoading ? (
+            <div className="py-12 text-center">
+              <RefreshCw className="h-8 w-8 animate-spin mx-auto text-blue-600 mb-2" />
+              <p className="text-gray-600">Loading documents...</p>
+            </div>
+          ) : kycDocumentsData ? (
+            <div className="space-y-4">
+              {(() => {
+                const docs = kycDocumentsData.documents;
+                const kyc = kycDocumentsData.kycDocuments;
+                const urlsFromKyc = getKycDocumentUrls(kyc);
+                const hasDocs = kycDocumentsData.hasUploadedDocuments === true || urlsFromKyc.length > 0 || (docs && docs.length > 0);
+                const showNoDocs = !hasDocs;
+
+                return (
+                  <>
+                    {docs && docs.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {docs.map((d) => (
+                          <div key={d.type}>
+                            <Label className="text-sm font-medium">{d.label}</Label>
+                            <a href={d.url} target="_blank" rel="noopener noreferrer" className="block mt-1">
+                              <Button variant="outline" size="sm" className="w-full">
+                                <Eye className="h-4 w-4 mr-2" />
+                                View
+                              </Button>
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    ) : urlsFromKyc.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {urlsFromKyc.map((item) => (
+                          <div key={item.key}>
+                            <Label className="text-sm font-medium">{item.label}</Label>
+                            <a href={item.url} target="_blank" rel="noopener noreferrer" className="block mt-1">
+                              <Button variant="outline" size="sm" className="w-full">
+                                <Eye className="h-4 w-4 mr-2" />
+                                View
+                              </Button>
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      null
+                    )}
+                    {showNoDocs && (
+                      <p className="text-sm text-amber-600">No documents uploaded yet.</p>
+                    )}
+                  </>
+                );
+              })()}
+              <div>
+                <Label>Review notes (required for rejection)</Label>
+                <Textarea
+                  value={kycReviewReason}
+                  onChange={(e) => setKycReviewReason(e.target.value)}
+                  placeholder="Add notes..."
+                  className="mt-2"
+                  rows={3}
+                />
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setKycDocumentsOpen(false)}>Cancel</Button>
+                <Button variant="destructive" onClick={() => selectedKycUser && handleKycReject(selectedKycUser._id)}>
+                  <X className="h-4 w-4 mr-2" />
+                  Reject
+                </Button>
+                <Button className="bg-green-600 hover:bg-green-700" onClick={() => selectedKycUser && handleKycApprove(selectedKycUser._id)}>
+                  <Check className="h-4 w-4 mr-2" />
+                  Approve
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <p className="text-gray-600 py-4">No document data available.</p>
+          )}
         </DialogContent>
       </Dialog>
 

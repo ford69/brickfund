@@ -140,10 +140,10 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
     setError('');
 
     try {
-      // Initialize payment with backend
+      // Initialize payment with backend (send amount in GHS; backend validates and converts to pesewas for Paystack if needed)
       const paymentResponse = await apiClient.initializePayment({
         projectId,
-        amount: amount * 100, // Convert to kobo/pesewas (smallest currency unit)
+        amount,
         email: user.email,
         metadata: {
           projectId,
@@ -343,7 +343,8 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
                   </ul>
                 </div>
 
-                {/* Developer Info */}
+                {/* Developer Info - only show when developer exists */}
+                {project.developer && (
                 <div className="border-t pt-6">
                   <h3 className="text-lg font-semibold mb-3">Developer Information</h3>
                   <div className="bg-gray-50 p-4 rounded-lg">
@@ -351,6 +352,7 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
                     <p className="text-sm text-gray-600">{(project.developer as any).companyName || 'Developer'}</p>
                   </div>
                 </div>
+                )}
               </CardContent>
             </Card>
 

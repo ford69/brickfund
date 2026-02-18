@@ -29,18 +29,53 @@ export interface ApiResponse<T = any> {
   };
 }
 
+export interface KycDocuments {
+  idFront?: string | null;
+  idBack?: string | null;
+  proofOfAddress?: string | null;
+  bankStatement?: string | null;
+  /** Backend may return snake_case; we check both */
+  id_front?: string | null;
+  id_back?: string | null;
+  proof_of_address?: string | null;
+  bank_statement?: string | null;
+}
+
+/** Get all KYC document URLs from object (handles both camelCase and snake_case) */
+export function getKycDocumentUrls(docs: KycDocuments | null | undefined): Array<{ key: string; label: string; url: string }> {
+  if (!docs) return [];
+  const get = (camel: keyof KycDocuments, snake: string, label: string): string | null => {
+    const v = (docs as any)[camel] ?? (docs as any)[snake];
+    return v && String(v).trim() ? String(v).trim() : null;
+  };
+  const out: Array<{ key: string; label: string; url: string }> = [];
+  const idFront = get('idFront', 'id_front', 'ID Front'); if (idFront) out.push({ key: 'idFront', label: 'ID Front', url: idFront });
+  const idBack = get('idBack', 'id_back', 'ID Back'); if (idBack) out.push({ key: 'idBack', label: 'ID Back', url: idBack });
+  const poa = get('proofOfAddress', 'proof_of_address', 'Proof of Address'); if (poa) out.push({ key: 'proofOfAddress', label: 'Proof of Address', url: poa });
+  const bank = get('bankStatement', 'bank_statement', 'Bank Statement'); if (bank) out.push({ key: 'bankStatement', label: 'Bank Statement', url: bank });
+  return out;
+}
+
+/** Check if any KYC document URLs exist (handles both camelCase and snake_case) */
+export function hasAnyKycDocuments(docs: KycDocuments | null | undefined): boolean {
+  return getKycDocumentUrls(docs).length > 0;
+}
+
 export interface User {
   _id: string;
   firstName: string;
   lastName: string;
   email: string;
   phone?: string;
+  companyName?: string;
   // Role-based access:
   // - 'investor' → standard investing user
   // - 'owner' → project owner / owner dashboard
   // - 'admin' → platform administrator
   role: 'investor' | 'owner' | 'admin';
   kycStatus: 'pending' | 'verified' | 'rejected';
+  kycDocuments?: KycDocuments;
+  hasUploadedDocuments?: boolean;
   isActive: boolean;
   isEmailVerified: boolean;
   createdAt: string;
@@ -66,7 +101,7 @@ export interface Project {
   minimumInvestment: number;
   roi: number;
   status: 'draft' | 'pending' | 'active' | 'funded' | 'completed' | 'cancelled';
-  developer: User;
+  developer: User | null;
   highlights: string[];
   financials: {
     totalProjectCost: number;
@@ -357,7 +392,9 @@ class ApiClient {
       if (!response.ok) {
         const errorMessage = data.error?.message || data.message || data.error || `HTTP ${response.status}: An error occurred`;
         console.error('[API] Request failed:', errorMessage);
-        throw new Error(errorMessage);
+        const err = new Error(errorMessage) as Error & { status?: number };
+        err.status = response.status;
+        throw err;
       }
 
       return data;
@@ -613,6 +650,64 @@ class ApiClient {
     });
   }
 
+  /** Update KYC documents. Use camelCase keys (idFront, idBack, proofOfAddress, bankStatement). */
+  async updateKycDocuments(docs: Partial<KycDocuments>) {
+    return this.request<User>('/users/profile', {
+      method: 'PUT',
+      body: JSON.stringify({
+        kycDocuments: {
+          idFront: docs.idFront ?? undefined,
+          idBack: docs.idBack ?? undefined,
+          proofOfAddress: docs.proofOfAddress ?? undefined,
+          bankStatement: docs.bankStatement ?? undefined,
+        },
+      }),
+    });
+  }
+
+  /**
+   * Upload a KYC document file and save the URL to the user's profile.
+   * Tries POST /users/kyc/upload first; falls back to /documents + updateKycDocuments.
+   * Backend must have kycDocuments on the User model for this to persist.
+   */
+  async uploadKycDocument(
+    file: File,
+    documentType: 'idFront' | 'idBack' | 'proofOfAddress' | 'bankStatement'
+  ): Promise<{ success: boolean; message?: string }> {
+    try {
+      // Try KYC-specific upload endpoint first (backend saves directly to user.kycDocuments)
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('documentType', documentType);
+      const kycResponse = await this.request<{ url?: string; success?: boolean }>('/users/kyc/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      if (kycResponse.success) {
+        return { success: true };
+      }
+    } catch {
+      // Fallback: use generic documents upload, then update user profile
+    }
+    try {
+      const formData = new FormData();
+      formData.append('files', file);
+      formData.append('category', 'kyc');
+      const uploadRes = await this.request<DocumentFile[]>('/documents', { method: 'POST', body: formData }) as any;
+      const arr = uploadRes?.data ?? uploadRes;
+      const first = Array.isArray(arr) ? arr[0] : null;
+      const url = first?.url ?? first?.fileUrl;
+      if (!url) throw new Error('No URL returned from upload');
+      const profileRes = await this.getUserProfile() as any;
+      const user = profileRes?.data ?? profileRes;
+      const current = user?.kycDocuments || {};
+      await this.updateKycDocuments({ ...current, [documentType]: url });
+      return { success: true };
+    } catch (err) {
+      return { success: false, message: err instanceof Error ? err.message : 'Upload failed' };
+    }
+  }
+
   async getUserInvestments(params?: { page?: number; limit?: number; status?: string }) {
     const searchParams = new URLSearchParams();
     
@@ -855,6 +950,15 @@ class ApiClient {
       method: 'PATCH',
       body: JSON.stringify({ reason }),
     });
+  }
+
+  async getKycDocumentsForUser(userId: string) {
+    return this.request<{
+      user: { id?: string; _id?: string; firstName: string; lastName: string; email: string; role: string; companyName?: string; kycStatus: string; createdAt: string };
+      kycDocuments?: KycDocuments;
+      documents?: Array<{ type: string; label: string; url: string }>;
+      hasUploadedDocuments: boolean;
+    }>(`/admin/kyc/users/${userId}/documents`);
   }
 
   // Documents API

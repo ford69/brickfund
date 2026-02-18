@@ -81,6 +81,7 @@ export default function AddProperty() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState('');
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [isKycError, setIsKycError] = useState(false);
   
   const [formData, setFormData] = useState<PropertyFormData>({
     title: '',
@@ -147,6 +148,7 @@ export default function AddProperty() {
     }
     if (submitError) {
       setSubmitError('');
+      setIsKycError(false);
     }
   };
 
@@ -251,6 +253,7 @@ export default function AddProperty() {
 
     setIsLoading(true);
     setSubmitError('');
+    setIsKycError(false);
     
     try {
       // Validate required numeric fields
@@ -414,6 +417,7 @@ export default function AddProperty() {
         // Show success message
         setSubmitSuccess(true);
         setSubmitError('');
+        setIsKycError(false);
         
         // Redirect to owner dashboard after a short delay
         setTimeout(() => {
@@ -424,6 +428,7 @@ export default function AddProperty() {
         console.warn('[Submit] ⚠️ Backend returned success but no data. Project may still be saved.');
         setSubmitSuccess(true);
         setSubmitError('');
+        setIsKycError(false);
         setTimeout(() => {
           router.push('/owner-dashboard');
         }, 2000);
@@ -468,6 +473,13 @@ export default function AddProperty() {
         }
       } else if (typeof error === 'string') {
         errorMessage = error;
+      }
+
+      // KYC gate: 403 or message about KYC/verification
+      const kycError = error?.status === 403 || /kyc|KYC|verified|upload documents|admin approval/i.test(errorMessage);
+      if (kycError) {
+        setIsKycError(true);
+        errorMessage = 'You must complete KYC verification before creating a project. Please upload your documents in your profile and wait for admin approval.';
       }
       
       console.error('[Submit] Error details:', {
@@ -543,9 +555,18 @@ export default function AddProperty() {
 
         {submitError && (
           <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            <div className="flex items-center">
-              <AlertCircle className="h-5 w-5 mr-2" />
-              {submitError}
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center">
+                <AlertCircle className="h-5 w-5 mr-2 shrink-0" />
+                {submitError}
+              </div>
+              {isKycError && (
+                <Link href="/profile?tab=kyc">
+                  <Button size="sm" variant="outline" className="mt-2 border-red-300 text-red-700 hover:bg-red-100">
+                    Complete KYC Verification
+                  </Button>
+                </Link>
+              )}
             </div>
           </div>
         )}

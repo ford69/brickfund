@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,18 +17,20 @@ import {
   Shield,
   Mail,
   Smartphone,
-  Globe,
   Moon,
   Sun,
+  Globe,
   Eye,
   EyeOff,
   Save,
   CheckCircle
 } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function SettingsPage() {
   const { user } = useAuth();
+  const { theme, setTheme } = useTheme();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [activeTab, setActiveTab] = useState('general');
@@ -38,7 +40,7 @@ export default function SettingsPage() {
     language: 'en',
     timezone: 'GMT+0',
     currency: 'GHS',
-    theme: 'light',
+    theme: 'system',
     
     // Notification Settings
     emailNotifications: true,
@@ -68,11 +70,13 @@ export default function SettingsPage() {
     confirmPassword: ''
   });
 
+  useEffect(() => {
+    if (theme) setSettings((prev) => ({ ...prev, theme }));
+  }, [theme]);
+
   const handleSettingChange = (key: string, value: any) => {
-    setSettings(prev => ({
-      ...prev,
-      [key]: value
-    }));
+    setSettings((prev) => ({ ...prev, [key]: value }));
+    if (key === 'theme') setTheme(value);
   };
 
   const handlePasswordChange = (field: string, value: string) => {
@@ -217,11 +221,13 @@ export default function SettingsPage() {
 
                 <div>
                   <Label>Theme</Label>
-                  <div className="flex items-center space-x-4 mt-2">
+                  <div className="flex items-center space-x-4 mt-2 flex-wrap gap-2">
                     <button
                       onClick={() => handleSettingChange('theme', 'light')}
-                      className={`flex items-center space-x-2 px-4 py-2 rounded-lg border ${
-                        settings.theme === 'light' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                      className={`flex items-center space-x-2 px-4 py-2 rounded-lg border transition-colors ${
+                        settings.theme === 'light'
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-500'
+                          : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
                       }`}
                     >
                       <Sun className="h-4 w-4" />
@@ -229,12 +235,25 @@ export default function SettingsPage() {
                     </button>
                     <button
                       onClick={() => handleSettingChange('theme', 'dark')}
-                      className={`flex items-center space-x-2 px-4 py-2 rounded-lg border ${
-                        settings.theme === 'dark' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                      className={`flex items-center space-x-2 px-4 py-2 rounded-lg border transition-colors ${
+                        settings.theme === 'dark'
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-500'
+                          : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
                       }`}
                     >
                       <Moon className="h-4 w-4" />
                       <span>Dark</span>
+                    </button>
+                    <button
+                      onClick={() => handleSettingChange('theme', 'system')}
+                      className={`flex items-center space-x-2 px-4 py-2 rounded-lg border transition-colors ${
+                        settings.theme === 'system'
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-500'
+                          : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                      }`}
+                    >
+                      <Globe className="h-4 w-4" />
+                      <span>System</span>
                     </button>
                   </div>
                 </div>

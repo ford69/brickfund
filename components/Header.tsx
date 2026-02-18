@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
+import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -13,12 +14,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Menu, X, Building2, User, Shield, LogOut, ChevronDown } from 'lucide-react';
+import { Menu, X, Building2, User, Shield, LogOut, ChevronDown, Sun, Moon } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const { theme, setTheme, resolvedTheme } = useTheme();
   const { user, isAuthenticated, logout } = useAuth();
+
+  useEffect(() => setMounted(true), []);
 
   const handleLogout = async () => {
     try {
@@ -52,30 +57,35 @@ export default function Header() {
           </Link>
 
           <nav className="hidden md:flex items-center gap-6 lg:gap-8" aria-label="Main">
-            <Link href="/projects" className={navLinkClass}>
-              Browse Projects
+            <Link href="/" className={navLinkClass}>
+              Home
             </Link>
-            <Link
-              href={
-                user?.role === 'admin'
-                  ? '/admin'
-                  : user?.role === 'owner'
-                    ? '/owner-dashboard'
-                    : '/dashboard'
-              }
-              className={navLinkClass}
-            >
-              Dashboard
+            <Link href="/#services" className={navLinkClass}>
+              Services
             </Link>
-            <a href="#how-it-works" className={navLinkClass}>
+            <Link href="/#how-it-works" className={navLinkClass}>
               How It Works
-            </a>
-            <a href="#about" className={navLinkClass}>
+            </Link>
+            <Link href="/#about" className={navLinkClass}>
               About
-            </a>
+            </Link>
+            <Link href="/#contact" className={navLinkClass}>
+              Contact Us
+            </Link>
           </nav>
 
           <div className="hidden md:flex items-center gap-3">
+            {mounted && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-white/90 hover:bg-white/10 hover:text-white"
+                onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+                aria-label="Toggle theme"
+              >
+                {resolvedTheme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              </Button>
+            )}
             {isAuthenticated ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -192,39 +202,52 @@ export default function Header() {
           >
             <nav className="flex flex-col gap-1" aria-label="Mobile">
               <Link
-                href="/projects"
+                href="/"
                 className="px-3 py-2.5 rounded-lg font-medium text-foreground hover:bg-accent transition-colors"
                 onClick={() => setIsOpen(false)}
               >
-                Browse Projects
+                Home
               </Link>
               <Link
-                href={
-                  user?.role === 'admin'
-                    ? '/admin'
-                    : user?.role === 'owner'
-                      ? '/owner-dashboard'
-                      : '/dashboard'
-                }
+                href="/#services"
                 className="px-3 py-2.5 rounded-lg font-medium text-foreground hover:bg-accent transition-colors"
                 onClick={() => setIsOpen(false)}
               >
-                Dashboard
+                Services
               </Link>
-              <a
-                href="#how-it-works"
+              <Link
+                href="/#how-it-works"
                 className="px-3 py-2.5 rounded-lg font-medium text-foreground hover:bg-accent transition-colors"
                 onClick={() => setIsOpen(false)}
               >
                 How It Works
-              </a>
-              <a
-                href="#about"
+              </Link>
+              <Link
+                href="/#about"
                 className="px-3 py-2.5 rounded-lg font-medium text-foreground hover:bg-accent transition-colors"
                 onClick={() => setIsOpen(false)}
               >
                 About
-              </a>
+              </Link>
+              <Link
+                href="/#contact"
+                className="px-3 py-2.5 rounded-lg font-medium text-foreground hover:bg-accent transition-colors"
+                onClick={() => setIsOpen(false)}
+              >
+                Contact Us
+              </Link>
+              {mounted && (
+                <button
+                  className="px-3 py-2.5 rounded-lg font-medium text-foreground hover:bg-accent transition-colors flex items-center gap-2"
+                  onClick={() => {
+                    setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
+                    setIsOpen(false);
+                  }}
+                >
+                  {resolvedTheme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                  {resolvedTheme === 'dark' ? 'Light mode' : 'Dark mode'}
+                </button>
+              )}
               <div className="mt-3 pt-3 border-t border-border flex flex-col gap-1">
                 {isAuthenticated ? (
                   <>

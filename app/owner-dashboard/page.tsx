@@ -25,7 +25,7 @@ import {
   Clock,
   AlertTriangle
 } from 'lucide-react';
-import { apiClient, OwnerDashboardData, UserSubscription } from '@/lib/api';
+import { apiClient, OwnerDashboardData, UserSubscription, Project } from '@/lib/api';
 import { getFeatureLimits } from '@/lib/subscription-utils';
 import SubscriptionStatus from '@/components/SubscriptionStatus';
 import { useAuth } from '@/contexts/AuthContext';
@@ -67,41 +67,69 @@ export default function OwnerDashboard() {
         
         const response = await apiClient.getOwnerDashboard();
         console.log('[OwnerDashboard] API response:', response);
-        
+
         if (response.success && response.data) {
+          const data = response.data as unknown as Record<string, unknown>;
+          // Support multiple response shapes (e.g. data.projects vs data.data.projects)
+          const rawProjects =
+            (data.projects as OwnerDashboardData['projects'] | undefined) ??
+            (data.data && typeof data.data === 'object' && (data.data as Record<string, unknown>).projects as OwnerDashboardData['projects'] | undefined);
+          const projectsList = Array.isArray(rawProjects) ? rawProjects : [];
+          const recentInvestorsList = Array.isArray(data.recentInvestors) ? data.recentInvestors : (data.recentInvestors as OwnerDashboardData['recentInvestors']) ?? [];
+
           console.log('[OwnerDashboard] Response data structure:', {
-            hasStats: !!response.data.stats,
-            hasProjects: !!response.data.projects,
-            hasRecentInvestors: !!response.data.recentInvestors,
-            dataKeys: Object.keys(response.data)
+            hasStats: !!data.stats,
+            hasProjects: projectsList.length > 0,
+            projectsCount: projectsList.length,
+            dataKeys: Object.keys(data),
           });
-          
+
           // Safely set stats with fallback to default values
-          if (response.data.stats) {
+          const statsObj = data.stats && typeof data.stats === 'object' ? (data.stats as OwnerDashboardData['stats']) : null;
+          if (statsObj) {
             setStats({
-              totalProjects: response.data.stats.totalProjects ?? 0,
-              totalRaised: response.data.stats.totalRaised ?? 0,
-              totalInvestors: response.data.stats.totalInvestors ?? 0,
-              averageROI: response.data.stats.averageROI ?? 0,
+              totalProjects: statsObj.totalProjects ?? 0,
+              totalRaised: statsObj.totalRaised ?? 0,
+              totalInvestors: statsObj.totalInvestors ?? 0,
+              averageROI: statsObj.averageROI ?? 0,
             });
           } else {
             console.warn('[OwnerDashboard] No stats in response, using defaults');
-            // Keep default stats (already initialized)
           }
-          
-          // Safely set projects and investors
-          setProjects(response.data.projects || []);
-          setRecentInvestors(response.data.recentInvestors || []);
+
+          setProjects(projectsList);
+          setRecentInvestors(recentInvestorsList);
+
+          // Fallback: if dashboard returned no projects but user is owner, fetch all projects
+          // and show ones owned by this user (fixes backend not including new projects in /owner/dashboard)
+          if (projectsList.length === 0 && user?.role === 'owner' && user?._id) {
+            try {
+              const projectsResponse = await apiClient.getProjects({});
+              const res = projectsResponse as unknown as Record<string, unknown>;
+              const raw = res.data ?? res.projects ?? projectsResponse;
+              const list = Array.isArray(raw) ? raw : (raw && typeof raw === 'object' && 'projects' in raw && Array.isArray((raw as { projects: Project[] }).projects)) ? (raw as { projects: Project[] }).projects : [];
+              const allProjects = (list || []) as Project[];
+              const myProjects = allProjects.filter(
+                (p: Project) => p.developer && (p.developer._id === user._id || (p as any).ownerId === user._id)
+              ) as OwnerDashboardData['projects'];
+              if (myProjects.length > 0) {
+                console.log('[OwnerDashboard] Fallback: loaded', myProjects.length, 'owner projects from /projects');
+                setProjects(myProjects);
+                setStats((prev) => ({ ...prev, totalProjects: myProjects.length }));
+              }
+            } catch (fallbackErr) {
+              console.warn('[OwnerDashboard] Fallback project fetch failed:', fallbackErr);
+            }
+          }
         } else {
           console.warn('[OwnerDashboard] API response not successful or no data:', {
             success: response.success,
             hasData: !!response.data,
             message: response.message,
-            error: response.error
+            error: response.error,
           });
           setProjects([]);
           setRecentInvestors([]);
-          // Keep default stats (already initialized)
         }
       } catch (err) {
         console.error('[OwnerDashboard] Failed to load owner dashboard:', err);

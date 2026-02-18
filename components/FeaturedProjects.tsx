@@ -18,7 +18,8 @@ export default function FeaturedProjects() {
         setIsLoading(true);
         const response = await apiClient.getFeaturedProjects(6);
         if (response.success && response.data) {
-          setProjects(response.data);
+          const list = Array.isArray(response.data) ? response.data : [];
+          setProjects(list.filter((p: Project) => p.developer != null));
         }
       } catch (error) {
         console.error('Error fetching featured projects:', error);

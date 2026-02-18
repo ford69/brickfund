@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +18,7 @@ import {
   MapPin, 
   Calendar,
   Upload,
+  Loader2,
   CheckCircle,
   AlertCircle,
   Clock,
@@ -30,12 +32,29 @@ import {
   Settings
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { apiClient } from '@/lib/api';
+import { toast } from '@/hooks/use-toast';
+
+const DOCUMENT_TYPE_MAP: Record<number, 'idFront' | 'idBack' | 'proofOfAddress' | 'bankStatement'> = {
+  1: 'idFront',
+  2: 'proofOfAddress',
+  3: 'bankStatement',
+  4: 'bankStatement',
+};
 
 export default function Profile() {
   const { user } = useAuth();
+  const searchParams = useSearchParams();
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('personal');
+
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab && ['personal', 'kyc', 'investment', 'security'].includes(tab)) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
 
   const [profileData, setProfileData] = useState({
     firstName: user?.firstName || '',
@@ -74,6 +93,35 @@ export default function Profile() {
     { id: 3, name: 'Bank Statement', type: 'income', status: 'pending', uploadedAt: null },
     { id: 4, name: 'Tax Certificate', type: 'income', status: 'pending', uploadedAt: null }
   ]);
+  const [uploadingDocId, setUploadingDocId] = useState<number | null>(null);
+  const [kycLoading, setKycLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchKyc = async () => {
+      if (!user) return;
+      setKycLoading(true);
+      try {
+        const res = await apiClient.getUserProfile() as any;
+        const u = res?.data ?? res;
+        if (u?.kycStatus) setKycStatus(prev => ({ ...prev, overall: u.kycStatus, identity: u.kycStatus, address: u.kycStatus, income: u.kycStatus }));
+        const k = u?.kycDocuments;
+        if (k) {
+          const snake = (x: string) => x.replace(/([A-Z])/g, '_$1').toLowerCase().replace(/^_/, '');
+          setDocuments(prev => prev.map(doc => {
+            const key = DOCUMENT_TYPE_MAP[doc.id];
+            const url = key && ((k as any)[key] ?? (k as any)[snake(key)]);
+            const hasUrl = url && String(url).trim();
+            return { ...doc, status: hasUrl ? 'uploaded' : doc.status, uploadedAt: hasUrl ? new Date().toISOString() : doc.uploadedAt };
+          }));
+        }
+      } catch {
+        // Keep default state
+      } finally {
+        setKycLoading(false);
+      }
+    };
+    fetchKyc();
+  }, [user]);
 
   const handleInputChange = (field: string, value: string) => {
     setProfileData(prev => ({
@@ -95,12 +143,25 @@ export default function Profile() {
     }
   };
 
-  const handleFileUpload = (documentId: number, file: File) => {
-    setDocuments(prev => prev.map(doc => 
-      doc.id === documentId 
-        ? { ...doc, status: 'uploaded', uploadedAt: new Date().toISOString() }
-        : doc
-    ));
+  const handleFileUpload = async (documentId: number, file: File) => {
+    const docType = DOCUMENT_TYPE_MAP[documentId];
+    if (!docType) return;
+    setUploadingDocId(documentId);
+    try {
+      const result = await apiClient.uploadKycDocument(file, docType);
+      if (result.success) {
+        setDocuments(prev => prev.map(doc =>
+          doc.id === documentId ? { ...doc, status: 'uploaded', uploadedAt: new Date().toISOString() } : doc
+        ));
+        toast({ title: 'Document uploaded', description: 'Your KYC document has been saved. An admin will review it shortly.' });
+      } else {
+        toast({ title: 'Upload failed', description: result.message || 'Could not save document. The backend may need a kycDocuments field on the User model.', variant: 'destructive' });
+      }
+    } catch (err) {
+      toast({ title: 'Upload failed', description: err instanceof Error ? err.message : 'Could not upload document', variant: 'destructive' });
+    } finally {
+      setUploadingDocId(null);
+    }
   };
 
   const getStatusIcon = (status: string) => {
@@ -428,10 +489,15 @@ export default function Profile() {
                         <Button
                           variant="outline"
                           size="sm"
+                          disabled={uploadingDocId === doc.id}
                           onClick={() => document.getElementById(`upload-${doc.id}`)?.click()}
                         >
-                          <Upload className="h-4 w-4 mr-2" />
-                          Upload
+                          {uploadingDocId === doc.id ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <Upload className="h-4 w-4 mr-2" />
+                          )}
+                          {uploadingDocId === doc.id ? 'Uploading...' : 'Upload'}
                         </Button>
                       </div>
                     </div>

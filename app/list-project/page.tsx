@@ -82,6 +82,7 @@ export default function ListProject() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState('');
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [isKycError, setIsKycError] = useState(false);
   const [subscription, setSubscription] = useState<UserSubscription | null>(null);
   const [projectCount, setProjectCount] = useState(0);
   const [checkingSubscription, setCheckingSubscription] = useState(true);
@@ -332,6 +333,7 @@ export default function ListProject() {
     setIsLoading(true);
     setSubmitError('');
     setSubmitSuccess(false);
+    setIsKycError(false);
     
     try {
       console.log('[ListProject] Preparing project data for backend...');
@@ -508,6 +510,13 @@ export default function ListProject() {
       } else if (typeof error === 'string') {
         errorMessage = error;
       }
+
+      // KYC gate: 403 or message about KYC/verification
+      const kycError = error?.status === 403 || /kyc|KYC|verified|upload documents|admin approval/i.test(errorMessage);
+      if (kycError) {
+        setIsKycError(true);
+        errorMessage = 'You must complete KYC verification before creating a project. Please upload your documents in your profile and wait for admin approval.';
+      }
       
       console.error('[ListProject] Final error message:', errorMessage);
       setSubmitError(errorMessage);
@@ -609,9 +618,18 @@ export default function ListProject() {
         {/* Error Message */}
         {submitError && (
           <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            <div className="flex items-center">
-              <AlertCircle className="h-5 w-5 mr-2" />
-              {submitError}
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center">
+                <AlertCircle className="h-5 w-5 mr-2 shrink-0" />
+                {submitError}
+              </div>
+              {isKycError && (
+                <Link href="/profile?tab=kyc">
+                  <Button size="sm" variant="outline" className="mt-2 border-red-300 text-red-700 hover:bg-red-100">
+                    Complete KYC Verification
+                  </Button>
+                </Link>
+              )}
             </div>
           </div>
         )}

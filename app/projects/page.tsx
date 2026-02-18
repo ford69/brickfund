@@ -58,22 +58,21 @@ export default function ProjectsPage() {
         });
 
         if (response.success) {
+          let list: Project[] = [];
           // Handle different response structures
           if (Array.isArray(response.data)) {
-            console.log('[ProjectsPage] Setting projects array:', response.data.length, 'items');
-            setProjects(response.data);
+            list = response.data;
           } else if (response.data && typeof response.data === 'object' && 'projects' in response.data && Array.isArray((response.data as any).projects)) {
-            // If data is wrapped in an object with a projects property
-            console.log('[ProjectsPage] Setting projects from data.projects:', (response.data as any).projects.length, 'items');
-            setProjects((response.data as any).projects);
+            list = (response.data as any).projects;
           } else if (response.data && typeof response.data === 'object' && 'data' in response.data && Array.isArray((response.data as any).data)) {
-            // If data is nested
-            console.log('[ProjectsPage] Setting projects from data.data:', (response.data as any).data.length, 'items');
-            setProjects((response.data as any).data);
-          } else {
-            console.warn('[ProjectsPage] Unexpected response structure:', response);
-            setProjects([]);
+            list = (response.data as any).data;
           }
+          // Exclude projects whose developer account no longer exists
+          const withDeveloper = list.filter((p: Project) => p.developer != null);
+          if (list.length && withDeveloper.length < list.length) {
+            console.log('[ProjectsPage] Filtered out', list.length - withDeveloper.length, 'projects with missing developer');
+          }
+          setProjects(withDeveloper);
         } else {
           console.warn('[ProjectsPage] API response not successful:', response);
           setProjects([]);

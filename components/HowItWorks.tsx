@@ -70,7 +70,7 @@ export default function HowItWorks() {
   };
 
   return (
-    <section id="how-it-works" className="py-16 sm:py-20 lg:py-24 bg-muted/40 relative overflow-hidden">
+    <section id="how-it-works" className="py-16 sm:py-20 lg:py-24 bg-muted/40 relative overflow-hidden scroll-mt-20">
       <div className="absolute inset-0 opacity-30">
         <div className="absolute top-1/4 left-0 w-96 h-96 bg-primary rounded-full blur-3xl" />
         <div className="absolute bottom-1/4 right-0 w-96 h-96 bg-brand-brown-400 rounded-full blur-3xl" />

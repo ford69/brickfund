@@ -107,22 +107,22 @@ export default function Footer() {
             </h3>
             <div className="space-y-4 text-sm text-background/70">
               <a
-                href="mailto:hello@brickfund.com"
+                href="mailto:Emmagus12@gmail.com"
                 className="flex items-center gap-3 hover:text-background transition-colors"
               >
                 <Mail className="h-5 w-5 shrink-0 text-primary" />
-                <span>hello@brickfund.com</span>
+                <span>Emmagus12@gmail.com</span>
               </a>
               <a
-                href="tel:180027542538"
+                href="tel:+233598321546"
                 className="flex items-center gap-3 hover:text-background transition-colors"
               >
                 <Phone className="h-5 w-5 shrink-0 text-primary" />
-                <span>1-800-BRICKFUND</span>
+                <span>0598321546 / 0277159203</span>
               </a>
               <div className="flex items-center gap-3">
                 <MapPin className="h-5 w-5 shrink-0 text-primary" />
-                <span>San Francisco, CA</span>
+                <span>Sanyo Road, Opposite PZ Cusson location</span>
               </div>
             </div>
           </div>
