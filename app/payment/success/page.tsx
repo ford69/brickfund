@@ -124,7 +124,7 @@ const PaymentSuccessPage: React.FC = () => {
                     {paymentData?.amount ? (paymentData.amount / 100).toLocaleString() : '0'}
                   </span>
                 </div>
-                {payment?.investment && investmentData && (
+                {payment?.investment && investmentData ? (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Expected Return:</span>
                     <span className="font-medium text-primary">
@@ -132,15 +132,15 @@ const PaymentSuccessPage: React.FC = () => {
                       {investmentData.expectedReturn?.toLocaleString() ?? 'N/A'}
                     </span>
                   </div>
-                )}
-                {payment?.purchase && purchaseData && (
+                ) : null}
+                {payment?.purchase && purchaseData ? (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Item:</span>
                     <span className="font-medium text-foreground">
                       {purchaseData.item?.name ?? 'Marketplace Item'}
                     </span>
                   </div>
-                )}
+                ) : null}
               </div>
             </div>
           )}

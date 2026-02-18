@@ -90,25 +90,32 @@ export default function SignUp() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
+    <div className="relative min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      {/* Property image background */}
+      <div
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: "url('/images/building-and-contruction-1.jpg')" }}
+        aria-hidden
+      />
+      <div className="absolute inset-0 bg-black/60" aria-hidden />
+      <div className="relative z-10 max-w-md w-full space-y-8">
         {/* Header */}
         <div className="text-center">
           <Link href="/" className="flex items-center justify-center mb-6">
-            <Building2 className="h-10 w-10 text-blue-700" />
-            <span className="ml-2 text-3xl font-bold text-gray-900">BrickFund</span>
+            <Building2 className="h-10 w-10 text-primary" />
+            <span className="ml-2 text-3xl font-bold text-white drop-shadow-sm">BrickFund</span>
           </Link>
-          <h2 className="text-3xl font-bold text-gray-900">Create your account</h2>
-          <p className="mt-2 text-sm text-gray-600">
+          <h2 className="text-3xl font-bold text-white drop-shadow-sm">Create your account</h2>
+          <p className="mt-2 text-sm text-white/90">
             Or{' '}
-            <Link href="/signin" className="font-medium text-blue-700 hover:text-blue-600">
+            <Link href="/signin" className="font-medium text-primary hover:opacity-90">
               sign in to your existing account
             </Link>
           </p>
         </div>
 
         {/* Sign Up Form */}
-        <Card>
+        <Card className="shadow-2xl bg-card/95 backdrop-blur-sm border-border">
           <CardHeader>
             <CardTitle>Join BrickFund today</CardTitle>
           </CardHeader>

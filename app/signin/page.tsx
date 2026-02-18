@@ -45,19 +45,26 @@ export default function SignIn() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-6 sm:space-y-8">
+    <div className="relative min-h-screen flex items-center justify-center py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
+      {/* Property image background */}
+      <div
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: "url('/images/accra-1.jpg')" }}
+        aria-hidden
+      />
+      <div className="absolute inset-0 bg-black/60" aria-hidden />
+      <div className="relative z-10 max-w-md w-full space-y-6 sm:space-y-8">
         <div className="text-center">
           <Link href="/" className="inline-flex items-center gap-2 mb-6">
             <Building2 className="h-9 w-9 sm:h-10 sm:w-10 text-primary" />
-            <span className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
+            <span className="text-2xl sm:text-3xl font-bold text-white tracking-tight drop-shadow-sm">
               BrickFund
             </span>
           </Link>
-          <h2 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
+          <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight drop-shadow-sm">
             Sign in to your account
           </h2>
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p className="mt-2 text-sm text-white/90">
             Or{' '}
             <Link href="/signup" className="font-medium text-primary hover:opacity-90">
               create a new account
@@ -65,7 +72,7 @@ export default function SignIn() {
           </p>
         </div>
 
-        <Card className="border border-border rounded-xl sm:rounded-2xl shadow-lg overflow-hidden">
+        <Card className="border border-border rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden bg-card/95 backdrop-blur-sm">
           <CardHeader className="pb-4">
             <CardTitle className="text-lg font-semibold text-foreground">Welcome back</CardTitle>
           </CardHeader>
