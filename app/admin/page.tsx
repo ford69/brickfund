@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -46,19 +46,12 @@ import {
   BarChart3,
   Activity,
   FileText,
-  Shield,
   Clock,
   CheckCircle,
   XCircle,
   Ban,
   Unlock,
-  LogOut,
   RefreshCw,
-  Menu,
-  ChevronLeft,
-  ChevronRight,
-  LayoutDashboard,
-  Store
 } from 'lucide-react';
 import { apiClient, Project, User, getKycDocumentUrls, hasAnyKycDocuments } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
@@ -88,12 +81,22 @@ interface AccountApproval {
   companyName?: string;
 }
 
+const VALID_TABS = ['overview', 'users', 'projects', 'approvals', 'kyc', 'stats', 'activity'] as const;
+
 export default function AdminDashboard() {
-  const { user, logout, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
-  
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [activeTab, setActiveTab] = useState('overview');
+  const searchParams = useSearchParams();
+  const tabFromUrl = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState(() =>
+    tabFromUrl && VALID_TABS.includes(tabFromUrl as any) ? tabFromUrl : 'overview'
+  );
+
+  useEffect(() => {
+    if (tabFromUrl && VALID_TABS.includes(tabFromUrl as any)) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [tabFromUrl]);
   const [isLoading, setIsLoading] = useState(true);
   const [adminStats, setAdminStats] = useState<AdminStats>({
     totalUsers: 0,
@@ -529,190 +532,17 @@ export default function AdminDashboard() {
     );
   }
 
-  const sidebarItems: Array<{
-    id: string;
-    label: string;
-    icon: any;
-    link?: string;
-  }> = [
-    { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-    { id: 'users', label: 'Users', icon: Users },
-    { id: 'projects', label: 'Projects', icon: Building2 },
-    { id: 'approvals', label: 'Approvals', icon: CheckCircle },
-    { id: 'kyc', label: 'KYC Review', icon: FileText },
-    { id: 'marketplace', label: 'Marketplace', icon: Store, link: '/admin/marketplace' },
-    { id: 'stats', label: 'Statistics', icon: BarChart3 },
-    { id: 'activity', label: 'Activity', icon: Activity },
-  ];
-
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Mobile Overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+    <div className="space-y-6">
+      {/* Top bar: refresh */}
+      <div className="flex justify-end">
+        <Button variant="outline" size="sm" onClick={fetchAdminData} disabled={isLoading} className="gap-2">
+          <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
+      </div>
 
-      {/* Sidebar */}
-      <aside
-        className={`bg-blue-700 border-r border-blue-800 transition-all duration-300 ease-in-out ${
-          sidebarOpen ? 'w-64 translate-x-0' : 'w-20 -translate-x-full lg:translate-x-0'
-        } fixed h-screen z-40 lg:relative lg:z-auto`}
-      >
-        <div className="flex flex-col h-full">
-          {/* Sidebar Header */}
-          <div className="flex items-center justify-between p-4 border-b border-blue-800">
-            {sidebarOpen ? (
-              <div className="flex items-center">
-                <Shield className="h-6 w-6 text-white" />
-                <span className="ml-2 font-bold text-white">Admin Portal</span>
-              </div>
-            ) : (
-              <div className="flex items-center justify-center w-full">
-                <Shield className="h-6 w-6 text-white" />
-              </div>
-            )}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className={`${sidebarOpen ? 'ml-auto' : 'mx-auto'} text-white hover:bg-blue-600`}
-            >
-              {sidebarOpen ? (
-                <ChevronLeft className="h-5 w-5" />
-              ) : (
-                <ChevronRight className="h-5 w-5" />
-              )}
-            </Button>
-          </div>
-
-          {/* Sidebar Navigation */}
-          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-            {sidebarItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
-              const hasLink = 'link' in item && item.link;
-              
-              if (hasLink && item.link) {
-                return (
-                  <Link
-                    key={item.id}
-                    href={item.link}
-                    className={`w-full flex items-center px-3 py-2.5 rounded-lg transition-colors ${
-                      'text-blue-100 hover:bg-blue-600 hover:text-white'
-                    }`}
-                    title={!sidebarOpen ? item.label : undefined}
-                  >
-                    <Icon className={`h-5 w-5 flex-shrink-0 ${sidebarOpen ? 'mr-3' : 'mx-auto'}`} />
-                    {sidebarOpen && <span className="truncate">{item.label}</span>}
-                  </Link>
-                );
-              }
-              
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    setActiveTab(item.id);
-                    // Close sidebar on mobile after selection
-                    if (window.innerWidth < 1024) {
-                      setSidebarOpen(false);
-                    }
-                  }}
-                  className={`w-full flex items-center px-3 py-2.5 rounded-lg transition-colors ${
-                    isActive
-                      ? 'bg-blue-600 text-white font-medium'
-                      : 'text-blue-100 hover:bg-blue-600 hover:text-white'
-                  }`}
-                  title={!sidebarOpen ? item.label : undefined}
-                >
-                  <Icon className={`h-5 w-5 flex-shrink-0 ${sidebarOpen ? 'mr-3' : 'mx-auto'}`} />
-                  {sidebarOpen && <span className="truncate">{item.label}</span>}
-                </button>
-              );
-            })}
-          </nav>
-
-          {/* Sidebar Footer */}
-          <div className="p-4 border-t border-blue-800">
-            <Link href="/">
-              <Button
-                variant="ghost"
-                className={`w-full ${sidebarOpen ? 'justify-start' : 'justify-center px-0'} text-blue-100 hover:bg-blue-600 hover:text-white`}
-                title={!sidebarOpen ? 'Back to Site' : undefined}
-              >
-                <Building2 className={`h-5 w-5 flex-shrink-0 ${sidebarOpen ? 'mr-2' : ''}`} />
-                {sidebarOpen && <span className="truncate">Back to Site</span>}
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <div className="flex-1 w-full min-w-0">
-        {/* Header */}
-        <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
-          <div className="px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
-              <div className="flex items-center space-x-4">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setSidebarOpen(!sidebarOpen)}
-                  className="lg:hidden"
-                >
-                  <Menu className="h-5 w-5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setSidebarOpen(!sidebarOpen)}
-                  className="hidden lg:flex"
-                >
-                  {sidebarOpen ? (
-                    <ChevronLeft className="h-5 w-5" />
-                  ) : (
-                    <ChevronRight className="h-5 w-5" />
-                  )}
-                </Button>
-                <div>
-                  <h1 className="text-xl font-bold text-gray-900">Admin Dashboard</h1>
-                  <p className="text-sm text-gray-600 hidden sm:block">Manage platform operations</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-4">
-                <Button 
-                  variant="ghost" 
-                  onClick={fetchAdminData}
-                  className="text-gray-700 hover:text-blue-700"
-                >
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">Refresh</span>
-                </Button>
-                <Link href="/notifications">
-                  <Button variant="ghost" size="icon" className="text-gray-700 hover:text-blue-700">
-                    <Bell className="h-5 w-5" />
-                  </Button>
-                </Link>
-                <Button 
-                  variant="ghost" 
-                  onClick={logout}
-                  className="text-gray-700 hover:text-red-600"
-                >
-                  <LogOut className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">Logout</span>
-                </Button>
-              </div>
-            </div>
-          </div>
-        </header>
-
-        <div className="px-4 sm:px-6 lg:px-8 py-8">
-
-        {/* Key Metrics */}
+      {/* Key Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card>
             <CardContent className="p-6">
@@ -1045,22 +875,20 @@ export default function AdminDashboard() {
                             </div>
 
                             <div className="flex justify-between items-center">
-                              <Link href={`/projects/${project._id}`}>
+                              <Link href={`/admin/projects/${project._id}`}>
                                 <Button variant="outline" size="sm">
                                   <Eye className="h-4 w-4 mr-2" />
-                                  View Details
+                                  View & Review
                                 </Button>
                               </Link>
-                              <div className="space-x-2">
-                                <Button 
-                                  size="sm" 
-                                  className="bg-green-600 hover:bg-green-700 text-white"
-                                  onClick={() => openProjectReview(project)}
-                                >
-                                  <Check className="h-4 w-4 mr-2" />
-                                  Review
-                                </Button>
-                              </div>
+                              <Button
+                                size="sm"
+                                className="bg-green-600 hover:bg-green-700 text-white"
+                                onClick={() => openProjectReview(project)}
+                              >
+                                <Check className="h-4 w-4 mr-2" />
+                                Quick Approve
+                              </Button>
                             </div>
                           </div>
                         ))}
@@ -1106,17 +934,19 @@ export default function AdminDashboard() {
                               </TableCell>
                               <TableCell>
                                 <div className="flex space-x-2">
-                                  <Link href={`/projects/${project._id}`}>
-                                    <Button variant="ghost" size="sm">
-                                      <Eye className="h-4 w-4" />
+                                  <Link href={`/admin/projects/${project._id}`}>
+                                    <Button variant="outline" size="sm">
+                                      <Eye className="h-4 w-4 mr-2" />
+                                      Review
                                     </Button>
                                   </Link>
                                   <Button
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => openProjectReview(project)}
+                                    title="Quick approve dialog"
                                   >
-                                    <Edit className="h-4 w-4" />
+                                    <Check className="h-4 w-4" />
                                   </Button>
                                 </div>
                               </TableCell>
@@ -1662,9 +1492,7 @@ export default function AdminDashboard() {
             </Button>
           </DialogFooter>
         </DialogContent>
-        </Dialog>
-        </div>
-      </div>
+      </Dialog>
     </div>
   );
 }

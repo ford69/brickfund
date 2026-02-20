@@ -28,8 +28,17 @@ export default function SignIn() {
     setError('');
 
     try {
-      await login(formData.email, formData.password);
-      router.push('/dashboard');
+      const loggedInUser = await login(formData.email, formData.password);
+      const redirect = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('redirect') : null;
+      if (redirect && redirect.startsWith('/')) {
+        router.push(redirect);
+      } else if (loggedInUser?.role === 'admin') {
+        router.push('/admin');
+      } else if (loggedInUser?.role === 'owner') {
+        router.push('/owner-dashboard');
+      } else {
+        router.push('/dashboard');
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Login failed. Please try again.');
     } finally {

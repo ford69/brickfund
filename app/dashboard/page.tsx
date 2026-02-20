@@ -25,9 +25,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
+  const [roleChecked, setRoleChecked] = useState(false);
   const [portfolioStats, setPortfolioStats] = useState({
     totalInvested: 0,
     portfolioValue: 0,
@@ -41,19 +42,28 @@ export default function Dashboard() {
   const [recommendedProjects, setRecommendedProjects] = useState<Project[]>([]);
 
   useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      router.replace('/signin?redirect=/dashboard');
+      return;
+    }
+    if (user.role === 'admin') {
+      router.replace('/admin');
+      return;
+    }
+    if (user.role === 'owner') {
+      router.replace('/owner-dashboard');
+      return;
+    }
+    setRoleChecked(true);
+  }, [user, authLoading, router]);
+
+  useEffect(() => {
+    if (!user || user.role !== 'investor' || !roleChecked) return;
+
     const fetchDashboardData = async () => {
       try {
         setIsLoading(true);
-        
-        // Role-based routing: admins and developers should not see the investor dashboard
-        if (user?.role === 'admin') {
-          router.push('/admin');
-          return;
-        }
-        if (user?.role === 'owner') {
-          router.push('/owner-dashboard');
-          return;
-        }
 
         // Use unified dashboard endpoint for investor data
         const dashboardResponse = await apiClient.getDashboard();
@@ -121,10 +131,8 @@ export default function Dashboard() {
       }
     };
 
-    if (user) {
-      fetchDashboardData();
-    }
-  }, [user, router]);
+    fetchDashboardData();
+  }, [user, roleChecked]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-GH', {
@@ -134,6 +142,17 @@ export default function Dashboard() {
       maximumFractionDigits: 0,
     }).format(amount);
   };
+
+  if (authLoading || !roleChecked || (user && user.role !== 'investor')) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary border-t-transparent mx-auto" />
+          <p className="mt-4 text-muted-foreground text-sm">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
