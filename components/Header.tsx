@@ -16,12 +16,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Menu, X, Building2, User, Shield, LogOut, ChevronDown, Sun, Moon } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAuthModal } from '@/contexts/AuthModalContext';
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const { theme, setTheme, resolvedTheme } = useTheme();
   const { user, isAuthenticated, logout } = useAuth();
+  const { openAuthModal } = useAuthModal();
 
   useEffect(() => setMounted(true), []);
 
@@ -160,20 +162,21 @@ export default function Header() {
               </DropdownMenu>
             ) : (
               <>
-                <Link href="/signin">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-white/90 hover:bg-white/10 hover:text-white"
-                  >
-                    Sign In
-                  </Button>
-                </Link>
-                <Link href="/signup">
-                  <Button size="sm" className="bg-primary hover:opacity-90 text-primary-foreground rounded-lg">
-                    Get Started
-                  </Button>
-                </Link>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-white/90 hover:bg-white/10 hover:text-white"
+                  onClick={() => openAuthModal('login')}
+                >
+                  Sign In
+                </Button>
+                <Button
+                  size="sm"
+                  className="bg-primary hover:opacity-90 text-primary-foreground rounded-lg"
+                  onClick={() => openAuthModal('signup')}
+                >
+                  Get Started
+                </Button>
               </>
             )}
           </div>
@@ -311,16 +314,19 @@ export default function Header() {
                   </>
                 ) : (
                   <>
-                    <Link href="/signin" onClick={() => setIsOpen(false)}>
-                      <Button variant="ghost" className="w-full justify-start rounded-lg">
-                        Sign In
-                      </Button>
-                    </Link>
-                    <Link href="/signup" onClick={() => setIsOpen(false)}>
-                      <Button className="w-full bg-primary hover:opacity-90 text-primary-foreground rounded-lg">
-                        Get Started
-                      </Button>
-                    </Link>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start rounded-lg"
+                      onClick={() => { openAuthModal('login'); setIsOpen(false); }}
+                    >
+                      Sign In
+                    </Button>
+                    <Button
+                      className="w-full bg-primary hover:opacity-90 text-primary-foreground rounded-lg"
+                      onClick={() => { openAuthModal('signup'); setIsOpen(false); }}
+                    >
+                      Get Started
+                    </Button>
                   </>
                 )}
               </div>

@@ -160,7 +160,7 @@ export default function AdminProjectReviewPage() {
                 ? 'bg-amber-100 text-amber-800'
                 : project.status === 'active'
                   ? 'bg-green-100 text-green-800'
-                  : project.status === 'rejected' || project.status === 'cancelled'
+                  : project.status === 'cancelled'
                     ? 'bg-red-100 text-red-800'
                     : 'bg-slate-100 text-slate-800'
             }

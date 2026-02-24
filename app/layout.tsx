@@ -2,8 +2,10 @@ import './globals.css';
 import type { Metadata } from 'next';
 import { Plus_Jakarta_Sans } from 'next/font/google';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { AuthModalProvider } from '@/contexts/AuthModalContext';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { Toaster } from '@/components/ui/toaster';
+import AuthModal from '@/components/AuthModal';
 
 const plusJakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -32,8 +34,11 @@ export default function RootLayout({
       <body className={`min-h-screen bg-background font-sans antialiased ${plusJakarta.variable}`}>
         <ThemeProvider>
           <AuthProvider>
-            {children}
-            <Toaster />
+            <AuthModalProvider>
+              {children}
+              <AuthModal />
+              <Toaster />
+            </AuthModalProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>
