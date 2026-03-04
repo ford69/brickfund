@@ -1,5 +1,6 @@
 import './globals.css';
 import type { Metadata } from 'next';
+import Script from 'next/script';
 import { Plus_Jakarta_Sans } from 'next/font/google';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { AuthModalProvider } from '@/contexts/AuthModalContext';
@@ -24,6 +25,16 @@ export const metadata: Metadata = {
   },
 };
 
+// Runs before paint so the correct theme class is on <html> immediately (prevents flash).
+const themeInitScript = `
+(function() {
+  var theme = localStorage.getItem('theme');
+  var systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  var isDark = theme === 'dark' || (theme !== 'light' && systemDark);
+  document.documentElement.setAttribute('class', isDark ? 'dark' : 'light');
+})();
+`;
+
 export default function RootLayout({
   children,
 }: {
@@ -32,6 +43,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`min-h-screen bg-background font-sans antialiased ${plusJakarta.variable}`}>
+        <Script id="theme-init" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <ThemeProvider>
           <AuthProvider>
             <AuthModalProvider>

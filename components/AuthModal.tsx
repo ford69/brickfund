@@ -209,7 +209,7 @@ export default function AuthModal() {
               </div>
               <Button
                 type="submit"
-                className="w-full h-11 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-medium"
+                className="w-full h-11 rounded-xl bg-black hover:bg-black/90 text-white font-medium"
                 disabled={isLoading}
               >
                 {isLoading ? 'Signing in...' : 'Continue'}
@@ -321,7 +321,7 @@ export default function AuthModal() {
               </div>
               <Button
                 type="submit"
-                className="w-full h-11 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-medium"
+                className="w-full h-11 rounded-xl bg-black hover:bg-black/90 text-white font-medium"
                 disabled={isLoading}
               >
                 {isLoading ? 'Creating account...' : 'Create account'}

@@ -177,6 +177,46 @@ export default function ListProject() {
     return null;
   }
 
+  const requiresKycApproval = user?.role === 'owner' && user.kycStatus !== 'verified';
+
+  if (requiresKycApproval) {
+    const isPending = user?.kycStatus === 'pending';
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+        <Card className="max-w-md w-full">
+          <CardHeader>
+            <CardTitle>Account under review</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-gray-700">
+              {isPending
+                ? 'Your developer account and KYC documents have been submitted and are currently being reviewed by the BrickFund team.'
+                : 'Your developer account is not yet approved. Please review your KYC and business verification details.'}
+            </p>
+            <p className="text-sm text-gray-600">
+              Once your account is approved, you&apos;ll be able to create and publish new property listings from this page.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 mt-2">
+              <Button
+                className="flex-1 h-10 rounded-lg bg-primary text-primary-foreground hover:opacity-90"
+                onClick={() => router.push('/profile?tab=kyc')}
+              >
+                View verification status
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1 h-10 rounded-lg"
+                onClick={() => router.push('/owner-dashboard')}
+              >
+                Go to dashboard
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({
       ...prev,
@@ -536,7 +576,7 @@ export default function ListProject() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

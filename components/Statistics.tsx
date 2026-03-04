@@ -45,12 +45,12 @@ export default function Statistics() {
 
   const formatCurrency = (amount: number | undefined) => {
     if (amount === undefined || amount === null || isNaN(amount)) {
-      return '$0+';
+      return 'GH₵0+';
     }
     if (amount >= 1000000) {
-      return `$${(amount / 1000000).toFixed(1)}M+`;
+      return `GH₵${(amount / 1000000).toFixed(1)}M+`;
     }
-    return `$${amount.toLocaleString()}+`;
+    return `GH₵${amount.toLocaleString()}+`;
   };
 
   const displayStats = [

@@ -66,9 +66,9 @@ export default function PurchaseHistory() {
   };
 
   const formatCurrency = (amount: number, currency: string) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-GH', {
       style: 'currency',
-      currency: currency || 'USD',
+      currency: currency || 'GHS',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);

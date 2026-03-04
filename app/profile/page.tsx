@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +10,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { 
   Building2, 
   User, 
@@ -29,7 +36,8 @@ import {
   Save,
   X,
   Bell,
-  Settings
+  Settings,
+  Monitor
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiClient } from '@/lib/api';
@@ -39,12 +47,20 @@ const DOCUMENT_TYPE_MAP: Record<number, 'idFront' | 'idBack' | 'proofOfAddress' 
   1: 'idFront',
   2: 'proofOfAddress',
   3: 'bankStatement',
-  4: 'bankStatement',
 };
+
+function LoginActivityTime() {
+  const [time, setTime] = useState<string>('');
+  useEffect(() => {
+    setTime(new Date().toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }));
+  }, []);
+  return <>{time || '—'}</>;
+}
 
 export default function Profile() {
   const { user } = useAuth();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('personal');
@@ -91,10 +107,12 @@ export default function Profile() {
     { id: 1, name: 'National ID Card', type: 'identity', status: 'pending', uploadedAt: null },
     { id: 2, name: 'Proof of Address', type: 'address', status: 'pending', uploadedAt: null },
     { id: 3, name: 'Bank Statement', type: 'income', status: 'pending', uploadedAt: null },
-    { id: 4, name: 'Tax Certificate', type: 'income', status: 'pending', uploadedAt: null }
   ]);
   const [uploadingDocId, setUploadingDocId] = useState<number | null>(null);
   const [kycLoading, setKycLoading] = useState(true);
+
+  const onboarding = searchParams.get('onboarding');
+  const allKycDocsUploaded = documents.every(doc => doc.status === 'uploaded');
 
   useEffect(() => {
     const fetchKyc = async () => {
@@ -191,7 +209,7 @@ export default function Profile() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -250,7 +268,7 @@ export default function Profile() {
                 </div>
                 <p className="text-gray-600 mt-1">{profileData.email}</p>
                 <p className="text-sm text-gray-500 mt-2">
-                  Member since {new Date().toLocaleDateString()}
+                  Member since {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                 </p>
               </div>
               <div className="flex space-x-2">
@@ -503,6 +521,18 @@ export default function Profile() {
                     </div>
                   ))}
                 </div>
+
+                {onboarding === 'owner' && user?.role === 'owner' && (
+                  <div className="mt-6 flex justify-end">
+                    <Button
+                      disabled={!allKycDocsUploaded || kycLoading}
+                      className="h-11 px-6 rounded-xl bg-primary text-primary-foreground hover:opacity-90"
+                      onClick={() => router.push('/owner-dashboard')}
+                    >
+                      Continue to dashboard
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -598,7 +628,37 @@ export default function Profile() {
                       <h4 className="font-medium">Login Activity</h4>
                       <p className="text-sm text-gray-600">View recent login activity</p>
                     </div>
-                    <Button variant="outline">View</Button>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button variant="outline">View</Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                          <DialogTitle>Login Activity</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4 pt-2">
+                          <p className="text-sm text-gray-600">
+                            Recent sessions where your account was used. If you see something you don&apos;t recognize, change your password.
+                          </p>
+                          <div className="space-y-3">
+                            <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 border">
+                              <Monitor className="h-5 w-5 text-gray-500 mt-0.5 shrink-0" />
+                              <div>
+                                <p className="font-medium text-gray-900">This device</p>
+                                <p className="text-sm text-gray-600">Current session</p>
+                                <p className="text-xs text-gray-500 mt-1">
+                                  <LoginActivityTime />
+                                </p>
+                              </div>
+                              <Badge variant="secondary" className="shrink-0">Active</Badge>
+                            </div>
+                            <p className="text-xs text-gray-500">
+                              More sessions may appear here once your backend supports login history.
+                            </p>
+                          </div>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
                   </div>
                 </div>
               </CardContent>

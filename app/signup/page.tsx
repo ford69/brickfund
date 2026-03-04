@@ -62,7 +62,8 @@ export default function SignUp() {
       
       // Redirect based on user type
       if (userType === 'owner') {
-        router.push('/owner-dashboard');
+        // New developers: start with KYC / business verification
+        router.push('/profile?tab=kyc&onboarding=owner');
       } else {
         router.push('/dashboard');
       }

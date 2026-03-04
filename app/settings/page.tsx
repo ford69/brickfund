@@ -70,13 +70,26 @@ export default function SettingsPage() {
     confirmPassword: ''
   });
 
+  // Sync theme from next-themes into local state (after mount)
   useEffect(() => {
-    if (theme) setSettings((prev) => ({ ...prev, theme }));
+    if (theme && typeof theme === 'string') setSettings((prev) => ({ ...prev, theme }));
   }, [theme]);
+
+  // Apply theme to document and persist (so Light/Dark/System buttons work reliably)
+  const applyTheme = (value: 'light' | 'dark' | 'system') => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('theme', value);
+    const isDark =
+      value === 'dark' ||
+      (value === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    // Set class directly on <html> so styles apply immediately; Tailwind dark: uses .dark
+    document.documentElement.setAttribute('class', isDark ? 'dark' : 'light');
+    setTheme(value);
+  };
 
   const handleSettingChange = (key: string, value: any) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
-    if (key === 'theme') setTheme(value);
+    if (key === 'theme') applyTheme(value as 'light' | 'dark' | 'system');
   };
 
   const handlePasswordChange = (field: string, value: string) => {
@@ -119,14 +132,14 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200">
+    <div className="min-h-screen bg-background">
+      {/* Header — uses semantic tokens so theme applies */}
+      <header className="bg-background border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <Link href="/" className="flex items-center">
-              <Building2 className="h-8 w-8 text-blue-700" />
-              <span className="ml-2 text-2xl font-bold text-gray-900">BrickFund</span>
+              <Building2 className="h-8 w-8 text-primary" />
+              <span className="ml-2 text-2xl font-bold text-foreground">BrickFund</span>
             </Link>
             <div className="flex items-center space-x-4">
               <Link href="/dashboard">
@@ -153,8 +166,8 @@ export default function SettingsPage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Page Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Settings</h1>
-          <p className="text-gray-600">
+          <h1 className="text-3xl font-bold text-foreground mb-2">Settings</h1>
+          <p className="text-muted-foreground">
             Manage your account preferences and security settings
           </p>
         </div>
@@ -223,33 +236,36 @@ export default function SettingsPage() {
                   <Label>Theme</Label>
                   <div className="flex items-center space-x-4 mt-2 flex-wrap gap-2">
                     <button
+                      type="button"
                       onClick={() => handleSettingChange('theme', 'light')}
                       className={`flex items-center space-x-2 px-4 py-2 rounded-lg border transition-colors ${
                         settings.theme === 'light'
-                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-500'
-                          : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                          ? 'border-primary bg-primary/10 text-foreground'
+                          : 'border-border bg-background hover:bg-muted text-foreground'
                       }`}
                     >
                       <Sun className="h-4 w-4" />
                       <span>Light</span>
                     </button>
                     <button
+                      type="button"
                       onClick={() => handleSettingChange('theme', 'dark')}
                       className={`flex items-center space-x-2 px-4 py-2 rounded-lg border transition-colors ${
                         settings.theme === 'dark'
-                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-500'
-                          : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                          ? 'border-primary bg-primary/10 text-foreground'
+                          : 'border-border bg-background hover:bg-muted text-foreground'
                       }`}
                     >
                       <Moon className="h-4 w-4" />
                       <span>Dark</span>
                     </button>
                     <button
+                      type="button"
                       onClick={() => handleSettingChange('theme', 'system')}
                       className={`flex items-center space-x-2 px-4 py-2 rounded-lg border transition-colors ${
                         settings.theme === 'system'
-                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-500'
-                          : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                          ? 'border-primary bg-primary/10 text-foreground'
+                          : 'border-border bg-background hover:bg-muted text-foreground'
                       }`}
                     >
                       <Globe className="h-4 w-4" />
@@ -271,7 +287,7 @@ export default function SettingsPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <h4 className="font-medium">Email Notifications</h4>
-                      <p className="text-sm text-gray-600">Receive notifications via email</p>
+                      <p className="text-sm text-muted-foreground">Receive notifications via email</p>
                     </div>
                     <Switch
                       checked={settings.emailNotifications}
@@ -282,7 +298,7 @@ export default function SettingsPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <h4 className="font-medium">Push Notifications</h4>
-                      <p className="text-sm text-gray-600">Receive push notifications on your device</p>
+                      <p className="text-sm text-muted-foreground">Receive push notifications on your device</p>
                     </div>
                     <Switch
                       checked={settings.pushNotifications}
@@ -293,7 +309,7 @@ export default function SettingsPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <h4 className="font-medium">SMS Notifications</h4>
-                      <p className="text-sm text-gray-600">Receive notifications via SMS</p>
+                      <p className="text-sm text-muted-foreground">Receive notifications via SMS</p>
                     </div>
                     <Switch
                       checked={settings.smsNotifications}
@@ -307,7 +323,7 @@ export default function SettingsPage() {
                       <div className="flex items-center justify-between">
                         <div>
                           <h5 className="font-medium">Investment Updates</h5>
-                          <p className="text-sm text-gray-600">Updates about your investments</p>
+                          <p className="text-sm text-muted-foreground">Updates about your investments</p>
                         </div>
                         <Switch
                           checked={settings.investmentUpdates}
@@ -318,7 +334,7 @@ export default function SettingsPage() {
                       <div className="flex items-center justify-between">
                         <div>
                           <h5 className="font-medium">Project Updates</h5>
-                          <p className="text-sm text-gray-600">Updates about projects you're invested in</p>
+                          <p className="text-sm text-muted-foreground">Updates about projects you're invested in</p>
                         </div>
                         <Switch
                           checked={settings.projectUpdates}
@@ -329,7 +345,7 @@ export default function SettingsPage() {
                       <div className="flex items-center justify-between">
                         <div>
                           <h5 className="font-medium">Marketing Emails</h5>
-                          <p className="text-sm text-gray-600">Promotional emails and offers</p>
+                          <p className="text-sm text-muted-foreground">Promotional emails and offers</p>
                         </div>
                         <Switch
                           checked={settings.marketingEmails}
@@ -340,7 +356,7 @@ export default function SettingsPage() {
                       <div className="flex items-center justify-between">
                         <div>
                           <h5 className="font-medium">Security Alerts</h5>
-                          <p className="text-sm text-gray-600">Important security notifications</p>
+                          <p className="text-sm text-muted-foreground">Important security notifications</p>
                         </div>
                         <Switch
                           checked={settings.securityAlerts}
@@ -379,7 +395,7 @@ export default function SettingsPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <h4 className="font-medium">Show Investments</h4>
-                        <p className="text-sm text-gray-600">Allow others to see your investments</p>
+                        <p className="text-sm text-muted-foreground">Allow others to see your investments</p>
                       </div>
                       <Switch
                         checked={settings.showInvestments}
@@ -390,7 +406,7 @@ export default function SettingsPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <h4 className="font-medium">Show Portfolio</h4>
-                        <p className="text-sm text-gray-600">Allow others to see your portfolio performance</p>
+                        <p className="text-sm text-muted-foreground">Allow others to see your portfolio performance</p>
                       </div>
                       <Switch
                         checked={settings.showPortfolio}
@@ -401,7 +417,7 @@ export default function SettingsPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <h4 className="font-medium">Data Sharing</h4>
-                        <p className="text-sm text-gray-600">Share anonymized data for platform improvement</p>
+                        <p className="text-sm text-muted-foreground">Share anonymized data for platform improvement</p>
                       </div>
                       <Switch
                         checked={settings.dataSharing}
@@ -424,7 +440,7 @@ export default function SettingsPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <h4 className="font-medium">Two-Factor Authentication</h4>
-                      <p className="text-sm text-gray-600">Add an extra layer of security to your account</p>
+                      <p className="text-sm text-muted-foreground">Add an extra layer of security to your account</p>
                     </div>
                     <Switch
                       checked={settings.twoFactorAuth}
@@ -435,7 +451,7 @@ export default function SettingsPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <h4 className="font-medium">Login Alerts</h4>
-                      <p className="text-sm text-gray-600">Get notified when someone logs into your account</p>
+                      <p className="text-sm text-muted-foreground">Get notified when someone logs into your account</p>
                     </div>
                     <Switch
                       checked={settings.loginAlerts}

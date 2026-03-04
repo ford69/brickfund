@@ -179,7 +179,7 @@ export default function SubscriptionsPage() {
 
   const formatPrice = (price: number) => {
     if (price === 0) return 'Free';
-    return `$${price}`;
+    return new Intl.NumberFormat('en-GH', { style: 'currency', currency: 'GHS', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(price);
   };
 
   const isCurrentPlan = (tier: SubscriptionPlan['tier']) => {
@@ -190,14 +190,14 @@ export default function SubscriptionsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -341,21 +341,21 @@ export default function SubscriptionsPage() {
             <Card>
               <CardContent className="p-4">
                 <h4 className="font-semibold mb-2">Featured Boost</h4>
-                <p className="text-2xl font-bold mb-2">$25<span className="text-sm text-gray-600">/week</span></p>
+                <p className="text-2xl font-bold mb-2">GH₵25<span className="text-sm text-gray-600">/week</span></p>
                 <p className="text-sm text-gray-600">High-visibility placement in Trending, Featured, and Top Investments sections.</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-4">
                 <h4 className="font-semibold mb-2">Marketing Push</h4>
-                <p className="text-2xl font-bold mb-2">$49<span className="text-sm text-gray-600">/campaign</span></p>
+                <p className="text-2xl font-bold mb-2">GH₵49<span className="text-sm text-gray-600">/campaign</span></p>
                 <p className="text-sm text-gray-600">Targeted promotion via email campaigns and investor dashboards.</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-4">
                 <h4 className="font-semibold mb-2">Branding Customization</h4>
-                <p className="text-2xl font-bold mb-2">$99</p>
+                <p className="text-2xl font-bold mb-2">GH₵99</p>
                 <p className="text-sm text-gray-600">Enhanced visual presentation with branded pages, banners, and custom templates.</p>
               </CardContent>
             </Card>

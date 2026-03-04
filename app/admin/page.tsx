@@ -521,7 +521,7 @@ export default function AdminDashboard() {
 
   if (authLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <RefreshCw className="h-8 w-8 animate-spin text-blue-700 mx-auto mb-4" />
           <p className="text-gray-600">

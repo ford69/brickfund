@@ -36,7 +36,7 @@ export default function AdminMarketplaceCreate() {
     description: '',
     category: '',
     price: '',
-    currency: 'USD',
+    currency: 'GHS',
     image: '',
     isActive: true,
   });
@@ -135,7 +135,7 @@ export default function AdminMarketplaceCreate() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
         <div className="px-4 sm:px-6 lg:px-8">

@@ -27,6 +27,15 @@ export default function Header() {
 
   useEffect(() => setMounted(true), []);
 
+  const handleThemeToggle = () => {
+    const next = resolvedTheme === 'dark' ? 'light' : 'dark';
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('theme', next);
+      document.documentElement.setAttribute('class', next === 'dark' ? 'dark' : 'light');
+    }
+    setTheme(next);
+  };
+
   const handleLogout = async () => {
     try {
       await logout();
@@ -82,7 +91,7 @@ export default function Header() {
                 variant="ghost"
                 size="icon"
                 className="text-white/90 hover:bg-white/10 hover:text-white"
-                onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+                onClick={handleThemeToggle}
                 aria-label="Toggle theme"
               >
                 {resolvedTheme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -170,13 +179,14 @@ export default function Header() {
                 >
                   Sign In
                 </Button>
-                <Button
-                  size="sm"
-                  className="bg-primary hover:opacity-90 text-primary-foreground rounded-lg"
-                  onClick={() => openAuthModal('signup')}
-                >
-                  Get Started
-                </Button>
+                <Link href="/signup">
+                  <Button
+                    size="sm"
+                    className="bg-primary hover:opacity-90 text-primary-foreground rounded-lg"
+                  >
+                    Get Started
+                  </Button>
+                </Link>
               </>
             )}
           </div>
@@ -243,7 +253,7 @@ export default function Header() {
                 <button
                   className="px-3 py-2.5 rounded-lg font-medium text-foreground hover:bg-accent transition-colors flex items-center gap-2"
                   onClick={() => {
-                    setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
+                    handleThemeToggle();
                     setIsOpen(false);
                   }}
                 >
@@ -321,12 +331,11 @@ export default function Header() {
                     >
                       Sign In
                     </Button>
-                    <Button
-                      className="w-full bg-primary hover:opacity-90 text-primary-foreground rounded-lg"
-                      onClick={() => { openAuthModal('signup'); setIsOpen(false); }}
-                    >
-                      Get Started
-                    </Button>
+                    <Link href="/signup" onClick={() => setIsOpen(false)}>
+                      <Button className="w-full bg-primary hover:opacity-90 text-primary-foreground rounded-lg">
+                        Get Started
+                      </Button>
+                    </Link>
                   </>
                 )}
               </div>

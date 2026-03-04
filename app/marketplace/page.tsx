@@ -73,17 +73,8 @@ export default function MarketplaceHome() {
   const [heroIndex, setHeroIndex] = useState(0);
 
   useEffect(() => {
-    if (isAuthenticated && user && user.role !== 'owner') {
-      if (user.role === 'investor') {
-        router.push('/dashboard');
-        toast({
-          title: 'Access Denied',
-          description: 'Marketplace is only available for real estate companies',
-          variant: 'destructive',
-        });
-      } else {
-        router.push('/dashboard');
-      }
+    if (isAuthenticated && user && user.role === 'admin') {
+      router.push('/admin');
       return;
     }
     fetchItems();
@@ -117,9 +108,9 @@ export default function MarketplaceHome() {
   };
 
   const formatCurrency = (amount: number, currency: string) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-GH', {
       style: 'currency',
-      currency: currency || 'USD',
+      currency: currency || 'GHS',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);
@@ -147,7 +138,7 @@ export default function MarketplaceHome() {
               </div>
               <h2 className="text-2xl font-semibold text-foreground mb-2">Access Required</h2>
               <p className="text-muted-foreground mb-8 leading-relaxed">
-                Please sign in as a real estate company to access the marketplace.
+                Please sign in to access the marketplace.
               </p>
               <Link href="/signin">
                 <Button className="bg-primary hover:opacity-90 text-primary-foreground rounded-xl px-6 h-11 font-medium">

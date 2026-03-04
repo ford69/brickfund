@@ -18,7 +18,8 @@ import {
   Bell,
   Settings,
   User,
-  LogOut
+  LogOut,
+  Store
 } from 'lucide-react';
 import { apiClient, Investment, Project, InvestorDashboardData } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
@@ -155,7 +156,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -167,6 +168,12 @@ export default function Dashboard() {
           <div className="flex items-center space-x-4">
             <Link href="/projects">
               <Button variant="ghost">Browse Projects</Button>
+            </Link>
+            <Link href="/marketplace">
+              <Button variant="ghost">
+                <Store className="h-4 w-4 mr-2" />
+                Marketplace
+              </Button>
             </Link>
             <Link href="/notifications">
               <Button variant="ghost" size="icon" title="Notifications">

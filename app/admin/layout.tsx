@@ -74,7 +74,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const isAdminRoot = pathname === '/admin';
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="min-h-screen bg-background flex">
       {/* Mobile overlay */}
       {mobileMenuOpen && (
         <div
