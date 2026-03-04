@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Dialog,
@@ -16,43 +16,19 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAuthModal } from '@/contexts/AuthModalContext';
 import { toast } from '@/hooks/use-toast';
 
-type ViewMode = 'login' | 'signup';
-
 export default function AuthModal() {
-  const { isOpen, mode, closeAuthModal } = useAuthModal();
-  const { login, register } = useAuth();
+  const { isOpen, closeAuthModal } = useAuthModal();
+  const { login } = useAuth();
   const router = useRouter();
-  const [viewMode, setViewMode] = useState<ViewMode>(mode);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [loginData, setLoginData] = useState({ email: '', password: '' });
-  const [signupData, setSignupData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    agreeToTerms: false,
-    role: 'investor' as 'investor' | 'owner',
-    companyName: '',
-  });
 
   const resetForm = () => {
     setError('');
     setLoginData({ email: '', password: '' });
-    setSignupData({
-      firstName: '',
-      lastName: '',
-      email: '',
-      password: '',
-      confirmPassword: '',
-      agreeToTerms: false,
-      role: 'investor',
-      companyName: '',
-    });
   };
 
   const handleOpenChange = (open: boolean) => {
@@ -80,47 +56,6 @@ export default function AuthModal() {
     }
   };
 
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    if (signupData.password !== signupData.confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-    if (!signupData.agreeToTerms) {
-      setError('You must agree to the Terms of Use and Privacy Policy');
-      return;
-    }
-    setIsLoading(true);
-    try {
-      await register({
-        firstName: signupData.firstName,
-        lastName: signupData.lastName,
-        email: signupData.email,
-        password: signupData.password,
-        role: signupData.role,
-        companyName: signupData.role === 'owner' ? signupData.companyName : undefined,
-      });
-      closeAuthModal();
-      resetForm();
-      if (signupData.role === 'owner') router.push('/owner-dashboard');
-      else router.push('/dashboard');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (isOpen) setViewMode(mode);
-  }, [isOpen, mode]);
-
-  const switchMode = (m: ViewMode) => {
-    setViewMode(m);
-    setError('');
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent
@@ -128,216 +63,66 @@ export default function AuthModal() {
       >
         <DialogHeader className="flex-shrink-0 px-6 pt-6 pb-4">
           <DialogTitle className="text-xl font-semibold text-foreground pr-8">
-            Log in or create an account
+            Log in
           </DialogTitle>
         </DialogHeader>
 
         <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-6 overscroll-contain">
-          {/* Tabs */}
-          <div className="flex rounded-lg border border-border p-1 mb-4 bg-muted/30">
-            <button
-              type="button"
-              onClick={() => switchMode('login')}
-              className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
-                viewMode === 'login'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Log in
-            </button>
-            <button
-              type="button"
-              onClick={() => switchMode('signup')}
-              className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
-                viewMode === 'signup'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Create account
-            </button>
-          </div>
-
           {error && (
             <div className="mb-4 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
               {error}
             </div>
           )}
 
-          {viewMode === 'login' ? (
-            <form onSubmit={handleLogin} className="space-y-3">
-              <div>
-                <Label htmlFor="login-email" className="text-foreground">
-                  Email address <span className="text-muted-foreground font-normal">(required)</span>
-                </Label>
-                <div className="mt-1.5 relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="login-email"
-                    type="email"
-                    required
-                    value={loginData.email}
-                    onChange={(e) => setLoginData((p) => ({ ...p, email: e.target.value }))}
-                    placeholder="Enter your email"
-                    className="pl-10 h-11 rounded-xl border-border"
-                  />
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="login-password" className="text-foreground">Password</Label>
-                <div className="mt-1.5 relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="login-password"
-                    type={showPassword ? 'text' : 'password'}
-                    required
-                    value={loginData.password}
-                    onChange={(e) => setLoginData((p) => ({ ...p, password: e.target.value }))}
-                    placeholder="Enter your password"
-                    className="pl-10 pr-10 h-11 rounded-xl border-border"
-                  />
-                  <button
-                    type="button"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    onClick={() => setShowPassword(!showPassword)}
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-              <Button
-                type="submit"
-                className="w-full h-11 rounded-xl bg-black hover:bg-black/90 text-white font-medium"
-                disabled={isLoading}
-              >
-                {isLoading ? 'Signing in...' : 'Continue'}
-              </Button>
-            </form>
-          ) : (
-            <form onSubmit={handleSignup} className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label htmlFor="signup-first" className="text-foreground">First name</Label>
-                  <Input
-                    id="signup-first"
-                    value={signupData.firstName}
-                    onChange={(e) => setSignupData((p) => ({ ...p, firstName: e.target.value }))}
-                    placeholder="First name"
-                    className="mt-1.5 h-11 rounded-xl border-border"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="signup-last" className="text-foreground">Last name</Label>
-                  <Input
-                    id="signup-last"
-                    value={signupData.lastName}
-                    onChange={(e) => setSignupData((p) => ({ ...p, lastName: e.target.value }))}
-                    placeholder="Last name"
-                    className="mt-1.5 h-11 rounded-xl border-border"
-                    required
-                  />
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="signup-email" className="text-foreground">
-                  Email address <span className="text-muted-foreground font-normal">(required)</span>
-                </Label>
-                <div className="mt-1.5 relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="signup-email"
-                    type="email"
-                    required
-                    value={signupData.email}
-                    onChange={(e) => setSignupData((p) => ({ ...p, email: e.target.value }))}
-                    placeholder="Enter your email"
-                    className="pl-10 h-11 rounded-xl border-border"
-                  />
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="signup-password" className="text-foreground">Password</Label>
-                <div className="mt-1.5 relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="signup-password"
-                    type={showPassword ? 'text' : 'password'}
-                    required
-                    value={signupData.password}
-                    onChange={(e) => setSignupData((p) => ({ ...p, password: e.target.value }))}
-                    placeholder="Create a password"
-                    className="pl-10 pr-10 h-11 rounded-xl border-border"
-                  />
-                  <button
-                    type="button"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    onClick={() => setShowPassword(!showPassword)}
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="signup-confirm" className="text-foreground">Confirm password</Label>
-                <div className="mt-1.5 relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="signup-confirm"
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    required
-                    value={signupData.confirmPassword}
-                    onChange={(e) => setSignupData((p) => ({ ...p, confirmPassword: e.target.value }))}
-                    placeholder="Confirm password"
-                    className="pl-10 pr-10 h-11 rounded-xl border-border"
-                  />
-                  <button
-                    type="button"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="agree-terms"
-                  checked={signupData.agreeToTerms}
-                  onChange={(e) => setSignupData((p) => ({ ...p, agreeToTerms: e.target.checked }))}
-                  className="h-4 w-4 rounded border-border text-primary"
+          <form onSubmit={handleLogin} className="space-y-3">
+            <div>
+              <Label htmlFor="login-email" className="text-foreground">
+                Email address <span className="text-muted-foreground font-normal">(required)</span>
+              </Label>
+              <div className="mt-1.5 relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="login-email"
+                  type="email"
+                  required
+                  value={loginData.email}
+                  onChange={(e) => setLoginData((p) => ({ ...p, email: e.target.value }))}
+                  placeholder="Enter your email"
+                  className="pl-10 h-11 rounded-xl border-border"
                 />
-                <Label htmlFor="agree-terms" className="text-sm text-muted-foreground cursor-pointer">
-                  I agree to BrickFund&apos;s{' '}
-                  <a href="/terms" className="text-primary hover:underline">Terms of Use</a>
-                  {' '}and{' '}
-                  <a href="/privacy" className="text-primary hover:underline">Privacy Policy</a>
-                </Label>
               </div>
-              <Button
-                type="submit"
-                className="w-full h-11 rounded-xl bg-black hover:bg-black/90 text-white font-medium"
-                disabled={isLoading}
-              >
-                {isLoading ? 'Creating account...' : 'Create account'}
-              </Button>
-              <p className="text-center text-sm text-muted-foreground mt-3">
-                Are you a developer?{' '}
+            </div>
+            <div>
+              <Label htmlFor="login-password" className="text-foreground">Password</Label>
+              <div className="mt-1.5 relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="login-password"
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={loginData.password}
+                  onChange={(e) => setLoginData((p) => ({ ...p, password: e.target.value }))}
+                  placeholder="Enter your password"
+                  className="pl-10 pr-10 h-11 rounded-xl border-border"
+                />
                 <button
                   type="button"
-                  className="text-primary font-medium hover:underline"
-                  onClick={() => { closeAuthModal(); router.push('/signup'); }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
-                  Sign up to list projects
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
-              </p>
-            </form>
-          )}
+              </div>
+            </div>
+            <Button
+              type="submit"
+              className="w-full h-11 rounded-xl bg-black hover:bg-black/90 text-white font-medium"
+              disabled={isLoading}
+            >
+              {isLoading ? 'Signing in...' : 'Continue'}
+            </Button>
+          </form>
 
           {/* Divider */}
           <div className="relative my-4">
@@ -390,7 +175,7 @@ export default function AuthModal() {
           </div>
 
           <p className="mt-4 text-center text-xs text-muted-foreground">
-            By creating an account you agree to BrickFund&apos;s{' '}
+            By logging in you agree to BrickFund&apos;s{' '}
             <a href="/terms" className="text-primary hover:underline">Terms of Use</a>
             {' '}and{' '}
             <a href="/privacy" className="text-primary hover:underline">Privacy Policy</a>.

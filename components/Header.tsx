@@ -1,10 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
-import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -14,27 +13,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Menu, X, Building2, User, Shield, LogOut, ChevronDown, Sun, Moon } from 'lucide-react';
+import { Menu, X, Building2, User, Shield, LogOut, ChevronDown } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAuthModal } from '@/contexts/AuthModalContext';
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  const { theme, setTheme, resolvedTheme } = useTheme();
   const { user, isAuthenticated, logout } = useAuth();
   const { openAuthModal } = useAuthModal();
-
-  useEffect(() => setMounted(true), []);
-
-  const handleThemeToggle = () => {
-    const next = resolvedTheme === 'dark' ? 'light' : 'dark';
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('theme', next);
-      document.documentElement.setAttribute('class', next === 'dark' ? 'dark' : 'light');
-    }
-    setTheme(next);
-  };
 
   const handleLogout = async () => {
     try {
@@ -86,17 +72,6 @@ export default function Header() {
           </nav>
 
           <div className="hidden md:flex items-center gap-3">
-            {mounted && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-white/90 hover:bg-white/10 hover:text-white"
-                onClick={handleThemeToggle}
-                aria-label="Toggle theme"
-              >
-                {resolvedTheme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              </Button>
-            )}
             {isAuthenticated ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -249,18 +224,6 @@ export default function Header() {
               >
                 Contact Us
               </Link>
-              {mounted && (
-                <button
-                  className="px-3 py-2.5 rounded-lg font-medium text-foreground hover:bg-accent transition-colors flex items-center gap-2"
-                  onClick={() => {
-                    handleThemeToggle();
-                    setIsOpen(false);
-                  }}
-                >
-                  {resolvedTheme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                  {resolvedTheme === 'dark' ? 'Light mode' : 'Dark mode'}
-                </button>
-              )}
               <div className="mt-3 pt-3 border-t border-border flex flex-col gap-1">
                 {isAuthenticated ? (
                   <>
