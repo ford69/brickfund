@@ -408,6 +408,12 @@ class ApiClient {
       if (!response.ok) {
         const errorMessage = data.error?.message || data.message || data.error || `HTTP ${response.status}: An error occurred`;
         console.error('[API] Request failed:', errorMessage);
+        if (response.status === 401) {
+          this.clearToken();
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+          }
+        }
         const err = new Error(errorMessage) as Error & { status?: number };
         err.status = response.status;
         throw err;

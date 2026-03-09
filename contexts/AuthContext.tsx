@@ -66,6 +66,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     checkAuth();
   }, []);
 
+  // Sync auth state when backend returns 401 (e.g. token expired or "No token provided")
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      setUser(null);
+      apiClient.clearToken();
+    };
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
+  }, []);
+
   const login = async (email: string, password: string): Promise<User | null> => {
     try {
       setIsLoading(true);
