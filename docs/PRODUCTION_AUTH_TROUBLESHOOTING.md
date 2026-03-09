@@ -44,3 +44,27 @@ In production, set `NEXT_PUBLIC_API_URL` to your real API base (e.g. `https://ap
 ---
 
 **Summary:** Ensure public routes do not require a token, CORS allows the `Authorization` header, and only client-side code runs authenticated requests. The frontend now clears the token and auth state on 401 so users can sign in again.
+
+---
+
+## 401 on OAuth start (GET /api/auth/google)
+
+If **GET /api/auth/google** (or `/api/auth/facebook`) returns 401 when the user clicks “Continue with Google”, your backend is requiring a token for that route. **That route must be public** — it is the first step of login; the user has no token yet. Whitelist these paths in your auth middleware so they do **not** require a token:
+
+- `GET /api/auth/google`
+- `GET /api/auth/google/callback`
+- `GET /api/auth/facebook`
+- `GET /api/auth/facebook/callback`
+- `POST /api/auth/login`
+- `POST /api/auth/register`
+
+See **docs/OAUTH_AND_KYC.md** for the full OAuth flow and the “401 on Continue with Google” section.
+
+---
+
+## 401 on /favicon.ico
+
+If you see **GET https://api.brickfund.org/favicon.ico 401**, the browser is requesting the favicon from the API domain (e.g. after visiting or being redirected to the API URL). Fix by either:
+
+- Serving a 204 No Content or 404 for `GET /favicon.ico` on the API (without requiring auth), or
+- Ensuring the frontend always uses the app origin for the favicon (e.g. `<link rel="icon" href="/favicon.ico">` on `www.brickfund.org` so the browser does not ask the API for it).

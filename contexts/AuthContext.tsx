@@ -41,19 +41,35 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const isAuthenticated = !!user;
 
-  // Check if user is logged in on mount
+  // Check if user is logged in on mount (and use OAuth callback user if present)
   useEffect(() => {
+    const AUTH_CALLBACK_USER_KEY = 'auth_callback_user';
+
     const checkAuth = async () => {
       try {
         const token = localStorage.getItem('token');
-        if (token) {
-          const response = await apiClient.getUserProfile();
-          if (response.success && response.data) {
-            setUser(response.data);
-          } else {
-            // Token is invalid, clear it
-            apiClient.clearToken();
+        if (!token) {
+          setIsLoading(false);
+          return;
+        }
+        // If we just came from OAuth callback, use the user it stored to avoid flash of "Sign In"
+        try {
+          const stored = typeof window !== 'undefined' ? sessionStorage.getItem(AUTH_CALLBACK_USER_KEY) : null;
+          if (stored) {
+            const parsed = JSON.parse(stored) as User;
+            sessionStorage.removeItem(AUTH_CALLBACK_USER_KEY);
+            setUser(parsed);
+            setIsLoading(false);
+            return;
           }
+        } catch {
+          // ignore parse error, fall back to fetch
+        }
+        const response = await apiClient.getUserProfile();
+        if (response.success && response.data) {
+          setUser(response.data);
+        } else {
+          apiClient.clearToken();
         }
       } catch (error) {
         console.error('Auth check failed:', error);

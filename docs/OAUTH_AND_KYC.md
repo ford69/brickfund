@@ -12,6 +12,25 @@ Add **Google** (and optionally **Facebook**) sign-in as an **optional** account-
 
 ---
 
+## ⚠️ 401 on “Continue with Google” / GET /api/auth/google
+
+If you see **401 Unauthorized** or **"Access denied. No token provided"** when users click “Continue with Google” (or Facebook), the cause is that **your API is requiring a token for the OAuth start route**. That route is the first step of login — the user does **not** have a token yet.
+
+**Backend fix:** Do **not** run “require auth” (or “require token”) middleware on these routes. They must be **public** (no `Authorization` header required):
+
+| Method | Path | Must be public? |
+|--------|------|------------------|
+| GET | `/api/auth/google` | **Yes** |
+| GET | `/api/auth/google/callback` | **Yes** |
+| GET | `/api/auth/facebook` | **Yes** |
+| GET | `/api/auth/facebook/callback` | **Yes** |
+| POST | `/api/auth/login` | **Yes** |
+| POST | `/api/auth/register` | **Yes** |
+
+Whitelist these paths in your auth middleware so they are excluded from the “require token” check. Only protect routes that need a logged-in user (e.g. `/api/users/profile`, `/api/users/investments`, `/api/subscriptions/current`, etc.).
+
+---
+
 ## What the frontend already does
 
 - **“Continue with Google” / “Continue with Facebook”**  

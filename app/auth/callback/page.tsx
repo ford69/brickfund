@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { apiClient } from '@/lib/api';
 
+const AUTH_CALLBACK_USER_KEY = 'auth_callback_user';
+
 export default function AuthCallbackPage() {
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<'loading' | 'done' | 'error'>('loading');
@@ -13,6 +15,7 @@ export default function AuthCallbackPage() {
     const token = searchParams.get('token');
     const error = searchParams.get('error');
     const returnUrl = searchParams.get('returnUrl') || searchParams.get('redirect_uri') || '/dashboard';
+    const safeReturnUrl = returnUrl.startsWith('/') ? returnUrl : `/${returnUrl.replace(/^\//, '')}`;
 
     if (error) {
       setStatus('error');
@@ -32,16 +35,40 @@ export default function AuthCallbackPage() {
       return () => clearTimeout(t);
     }
 
-    try {
-      apiClient.setToken(token);
-      setStatus('done');
-      setMessage('Success! Redirecting...');
-      window.location.href = returnUrl.startsWith('/') ? returnUrl : `/dashboard?return=${encodeURIComponent(returnUrl)}`;
-    } catch {
-      setStatus('error');
-      setMessage('Could not complete sign-in.');
-      setTimeout(() => { window.location.href = '/signin'; }, 2000);
-    }
+    let cancelled = false;
+
+    const completeSignIn = async () => {
+      try {
+        apiClient.setToken(token);
+        setMessage('Verifying session...');
+        const response = await apiClient.getUserProfile();
+        if (cancelled) return;
+        if (response.success && response.data) {
+          try {
+            sessionStorage.setItem(AUTH_CALLBACK_USER_KEY, JSON.stringify(response.data));
+          } catch {
+            // sessionStorage full or unavailable; auth will still work via token + getUserProfile on next page
+          }
+          setStatus('done');
+          setMessage('Success! Redirecting...');
+          window.location.href = safeReturnUrl;
+        } else {
+          apiClient.clearToken();
+          setStatus('error');
+          setMessage('Could not load your account. Redirecting to sign in...');
+          setTimeout(() => { window.location.href = '/signin'; }, 2000);
+        }
+      } catch {
+        if (cancelled) return;
+        apiClient.clearToken();
+        setStatus('error');
+        setMessage('Could not complete sign-in. Redirecting...');
+        setTimeout(() => { window.location.href = '/signin'; }, 2000);
+      }
+    };
+
+    completeSignIn();
+    return () => { cancelled = true; };
   }, [searchParams]);
 
   return (
