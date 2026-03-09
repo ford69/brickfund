@@ -13,6 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Menu, X, Building2, User, Shield, LogOut, ChevronDown } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAuthModal } from '@/contexts/AuthModalContext';
@@ -79,9 +80,14 @@ export default function Header() {
                     variant="ghost"
                     className="flex items-center gap-2 h-9 px-3 rounded-lg text-white/90 hover:bg-white/10 hover:text-white transition-colors"
                   >
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-white/20 text-white">
-                      <User className="h-4 w-4" />
-                    </div>
+                    <Avatar className="w-8 h-8 rounded-full shrink-0 border border-white/20">
+                      <AvatarImage src={user?.avatarUrl} alt="" />
+                      <AvatarFallback className="bg-white/20 text-white text-xs font-medium">
+                        {user?.firstName?.[0] && user?.lastName?.[0]
+                          ? `${user.firstName[0]}${user.lastName[0]}`
+                          : user?.firstName?.[0] ?? <User className="h-4 w-4" />}
+                      </AvatarFallback>
+                    </Avatar>
                     <span className="font-medium text-sm max-w-[100px] truncate">
                       {user?.firstName}
                     </span>
@@ -229,9 +235,14 @@ export default function Header() {
                   <>
                     <div className="px-3 py-3 rounded-xl bg-muted/50">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                          <User className="h-5 w-5 text-primary" />
-                        </div>
+                        <Avatar className="w-10 h-10 rounded-full shrink-0">
+                          <AvatarImage src={user?.avatarUrl} alt="" />
+                          <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
+                            {user?.firstName?.[0] && user?.lastName?.[0]
+                              ? `${user.firstName[0]}${user.lastName[0]}`
+                              : user?.firstName?.[0] ?? <User className="h-5 w-5" />}
+                          </AvatarFallback>
+                        </Avatar>
                         <div className="min-w-0 flex-1">
                           <p className="font-medium text-foreground truncate">
                             {user?.firstName} {user?.lastName}

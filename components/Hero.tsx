@@ -1,11 +1,33 @@
 'use client';
 
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, TrendingUp, Shield, Users, Search, MapPin } from 'lucide-react';
 import Link from 'next/link';
 
+const PROPERTY_TYPES = [
+  { value: 'all', label: 'All Types' },
+  { value: 'residential', label: 'Residential' },
+  { value: 'commercial', label: 'Commercial' },
+  { value: 'luxury', label: 'Luxury' },
+  { value: 'sustainable', label: 'Sustainable' },
+  { value: 'heritage', label: 'Heritage' },
+] as const;
+
 export default function Hero() {
+  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [propertyType, setPropertyType] = useState<string>('all');
+
+  const handleSearch = () => {
+    const params = new URLSearchParams();
+    if (searchQuery.trim()) params.set('search', searchQuery.trim());
+    if (propertyType && propertyType !== 'all') params.set('category', propertyType);
+    const query = params.toString();
+    router.push(query ? `/projects?${query}` : '/projects');
+  };
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -97,27 +119,36 @@ export default function Hero() {
                   type="text"
                   placeholder="Search by location, project type..."
                   className="flex-1 min-w-0 outline-none text-foreground placeholder:text-muted-foreground bg-transparent text-sm sm:text-base"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                 />
               </div>
               <div className="hidden sm:block w-px bg-border self-stretch" />
               <div className="flex items-center px-4 py-3 sm:py-3.5">
-                <select className="outline-none text-foreground bg-transparent text-sm sm:text-base cursor-pointer">
-                  <option>All Types</option>
-                  <option>Residential</option>
-                  <option>Commercial</option>
-                  <option>Mixed-Use</option>
+                <select
+                  className="outline-none text-foreground bg-transparent text-sm sm:text-base cursor-pointer w-full"
+                  value={propertyType}
+                  onChange={(e) => setPropertyType(e.target.value)}
+                >
+                  {PROPERTY_TYPES.map((t) => (
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="hidden sm:block w-px bg-border self-stretch" />
-              <Link href="/projects" className="flex-shrink-0">
+              <div className="flex-shrink-0">
                 <Button
                   size="lg"
                   className="w-full sm:w-auto bg-primary hover:opacity-90 text-primary-foreground rounded-xl px-6 h-11 sm:h-12"
+                  onClick={handleSearch}
                 >
                   <Search className="mr-2 h-5 w-5" />
                   Search Projects
                 </Button>
-              </Link>
+              </div>
             </div>
           </motion.div>
 

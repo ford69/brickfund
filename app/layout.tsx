@@ -26,12 +26,15 @@ export const metadata: Metadata = {
 };
 
 // Runs before paint so the correct theme class is on <html> immediately (prevents flash).
+// Note: React hydration may reset the root; ThemeApplicator in ThemeProvider re-applies after mount.
 const themeInitScript = `
 (function() {
-  var theme = localStorage.getItem('theme');
-  var systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-  var isDark = theme === 'dark' || (theme !== 'light' && systemDark);
-  document.documentElement.setAttribute('class', isDark ? 'dark' : 'light');
+  try {
+    var theme = localStorage.getItem('theme');
+    var systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var isDark = theme === 'dark' || (theme !== 'light' && systemDark);
+    document.documentElement.classList.toggle('dark', isDark);
+  } catch (e) {}
 })();
 `;
 

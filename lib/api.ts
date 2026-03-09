@@ -5,6 +5,20 @@
 const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 const API_BASE_URL = rawApiUrl.endsWith('/api') ? rawApiUrl : `${rawApiUrl.replace(/\/$/, '')}/api`;
 
+/** Build backend OAuth URL for redirect. Call in browser; backend should redirect back to /auth/callback?token=... */
+export function getOAuthRedirectUrl(
+  provider: 'google' | 'facebook',
+  returnUrl?: string
+): string {
+  const redirectUri =
+    typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : '';
+  const params = new URLSearchParams({ redirect_uri: redirectUri });
+  if (returnUrl && typeof window !== 'undefined') {
+    params.set('returnUrl', returnUrl);
+  }
+  return `${API_BASE_URL}/auth/${provider}?${params.toString()}`;
+}
+
 // Currency formatting utility
 export const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('en-GH', {
@@ -68,6 +82,8 @@ export interface User {
   email: string;
   phone?: string;
   companyName?: string;
+  /** Profile picture URL (investor/owner avatar) */
+  avatarUrl?: string;
   // Role-based access:
   // - 'investor' → standard investing user
   // - 'owner' → project owner / owner dashboard
@@ -648,6 +664,53 @@ class ApiClient {
       method: 'PUT',
       body: JSON.stringify(profileData),
     });
+  }
+
+  /** Change password for the current user. Requires current password and new password. */
+  async changePassword(currentPassword: string, newPassword: string) {
+    return this.request<{ message?: string }>('/users/profile/password', {
+      method: 'PUT',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+  }
+
+  /**
+   * Upload a profile picture (avatar). Tries POST /users/profile/avatar; falls back to
+   * generic document upload + updateUserProfile(avatarUrl).
+   */
+  async uploadProfileImage(file: File): Promise<{ success: boolean; data?: User; message?: string }> {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('avatar', file);
+      const res = await this.request<{ url?: string; user?: User }>('/users/profile/avatar', {
+        method: 'POST',
+        body: formData,
+      }) as any;
+      const url = res?.data?.url ?? res?.url;
+      const user = res?.data?.user ?? res?.user;
+      if (user) return { success: true, data: user };
+      if (url) {
+        const update = await this.updateUserProfile({ avatarUrl: url });
+        if (update.success && update.data) return { success: true, data: update.data };
+      }
+    } catch {
+      // Fallback: upload as document then set avatarUrl
+    }
+    try {
+      const formData = new FormData();
+      formData.append('files', file);
+      formData.append('category', 'avatar');
+      const uploadRes = await this.request<{ url?: string; fileUrl?: string }[]>('/documents', { method: 'POST', body: formData }) as any;
+      const arr = Array.isArray(uploadRes?.data) ? uploadRes.data : Array.isArray(uploadRes) ? uploadRes : [];
+      const first = arr[0];
+      const url = first?.url ?? first?.fileUrl;
+      if (!url) throw new Error('No URL returned from upload');
+      const update = await this.updateUserProfile({ avatarUrl: url });
+      return update.success && update.data ? { success: true, data: update.data } : { success: false, message: 'Failed to update profile' };
+    } catch (err) {
+      return { success: false, message: err instanceof Error ? err.message : 'Upload failed' };
+    }
   }
 
   /** Update KYC documents. Use camelCase keys (idFront, idBack, proofOfAddress, bankStatement). */

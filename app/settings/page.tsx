@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -27,13 +28,23 @@ import {
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useAuth } from '@/contexts/AuthContext';
+import { apiClient } from '@/lib/api';
+import { toast } from '@/hooks/use-toast';
 
 export default function SettingsPage() {
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const { theme, setTheme } = useTheme();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [activeTab, setActiveTab] = useState('general');
+
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab && ['general', 'notifications', 'privacy', 'security'].includes(tab)) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
 
   const [settings, setSettings] = useState({
     // General Settings
@@ -82,8 +93,7 @@ export default function SettingsPage() {
     const isDark =
       value === 'dark' ||
       (value === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    // Set class directly on <html> so styles apply immediately; Tailwind dark: uses .dark
-    document.documentElement.setAttribute('class', isDark ? 'dark' : 'light');
+    document.documentElement.classList.toggle('dark', isDark);
     setTheme(value);
   };
 
@@ -113,19 +123,35 @@ export default function SettingsPage() {
   };
 
   const handleChangePassword = async () => {
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      alert('Passwords do not match');
+    const { currentPassword, newPassword, confirmPassword } = passwordData;
+    if (!currentPassword.trim()) {
+      toast({ title: 'Current password required', description: 'Enter your current password.', variant: 'destructive' });
       return;
     }
-    
+    if (!newPassword.trim()) {
+      toast({ title: 'New password required', description: 'Enter a new password.', variant: 'destructive' });
+      return;
+    }
+    if (newPassword.length < 8) {
+      toast({ title: 'Password too short', description: 'New password must be at least 8 characters.', variant: 'destructive' });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast({ title: "Passwords don't match", description: 'New password and confirmation must match.', variant: 'destructive' });
+      return;
+    }
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      // Show success message
-    } catch (error) {
-      console.error('Error changing password:', error);
+      const response = await apiClient.changePassword(currentPassword, newPassword);
+      if (response.success) {
+        setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+        toast({ title: 'Password updated', description: 'Your password has been changed. Use it next time you sign in.' });
+      } else {
+        toast({ title: 'Failed to change password', description: response.message || 'Please check your current password and try again.', variant: 'destructive' });
+      }
+    } catch (error: any) {
+      const message = error?.message || 'Could not change password. Check your current password and try again.';
+      toast({ title: 'Failed to change password', description: message, variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }

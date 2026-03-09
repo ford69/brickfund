@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -39,6 +39,7 @@ import {
   Settings,
   Monitor
 } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiClient } from '@/lib/api';
 import { toast } from '@/hooks/use-toast';
@@ -58,12 +59,14 @@ function LoginActivityTime() {
 }
 
 export default function Profile() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const searchParams = useSearchParams();
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [activeTab, setActiveTab] = useState('personal');
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const tab = searchParams.get('tab');
@@ -208,6 +211,34 @@ export default function Profile() {
     }
   };
 
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Invalid file', description: 'Please select an image (e.g. JPG, PNG).', variant: 'destructive' });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: 'File too large', description: 'Image must be under 5MB.', variant: 'destructive' });
+      return;
+    }
+    setAvatarUploading(true);
+    e.target.value = '';
+    try {
+      const result = await apiClient.uploadProfileImage(file);
+      if (result.success && result.data?.avatarUrl) {
+        await updateUser({ avatarUrl: result.data.avatarUrl });
+        toast({ title: 'Profile picture updated', description: 'Your avatar is now visible across the site.' });
+      } else {
+        toast({ title: 'Upload failed', description: result.message || 'Could not update profile picture.', variant: 'destructive' });
+      }
+    } catch (err) {
+      toast({ title: 'Upload failed', description: err instanceof Error ? err.message : 'Could not upload image.', variant: 'destructive' });
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -246,15 +277,29 @@ export default function Profile() {
           <CardContent className="p-8">
             <div className="flex items-center space-x-6">
               <div className="relative">
-                <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center">
-                  <User className="h-12 w-12 text-blue-600" />
-                </div>
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleAvatarChange}
+                  disabled={avatarUploading}
+                />
+                <Avatar className="w-24 h-24 border-4 border-gray-100">
+                  <AvatarImage src={user?.avatarUrl} alt="Profile" />
+                  <AvatarFallback className="w-full h-full bg-blue-100 text-blue-600">
+                    <User className="h-12 w-12" />
+                  </AvatarFallback>
+                </Avatar>
                 <Button
                   size="icon"
                   className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full"
                   variant="secondary"
+                  onClick={() => avatarInputRef.current?.click()}
+                  disabled={avatarUploading}
+                  title="Change profile picture"
                 >
-                  <Camera className="h-4 w-4" />
+                  {avatarUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
                 </Button>
               </div>
               <div className="flex-1">
@@ -612,7 +657,9 @@ export default function Profile() {
                       <h4 className="font-medium">Change Password</h4>
                       <p className="text-sm text-gray-600">Update your account password</p>
                     </div>
-                    <Button variant="outline">Change</Button>
+                    <Link href="/settings?tab=security">
+                      <Button variant="outline">Change</Button>
+                    </Link>
                   </div>
 
                   <div className="flex items-center justify-between p-4 border rounded-lg">

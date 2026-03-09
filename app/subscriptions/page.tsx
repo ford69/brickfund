@@ -31,7 +31,7 @@ const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   {
     tier: 'pro',
     name: 'Pro',
-    price: 199,
+    price: 599,
     duration: 90,
     durationLabel: '3 months',
     maxProjects: 5,
@@ -48,7 +48,7 @@ const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   {
     tier: 'growth',
     name: 'Growth',
-    price: 299,
+    price: 999,
     duration: 180,
     durationLabel: '6 months',
     maxProjects: 10,
@@ -65,7 +65,7 @@ const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   {
     tier: 'enterprise',
     name: 'Enterprise',
-    price: 499,
+    price: 1499,
     duration: 365,
     durationLabel: '12 months',
     maxProjects: 'unlimited',

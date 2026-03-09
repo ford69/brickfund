@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -23,13 +24,21 @@ import {
 import { apiClient, Project } from '@/lib/api';
 
 export default function ProjectsPage() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [selectedLocation, setSelectedLocation] = useState('all');
+  const searchParams = useSearchParams();
+  const [searchTerm, setSearchTerm] = useState(() => searchParams.get('search') ?? '');
+  const [selectedCategory, setSelectedCategory] = useState(() => searchParams.get('category') ?? 'all');
+  const [selectedLocation, setSelectedLocation] = useState(() => searchParams.get('location') ?? 'all');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Sync filter state when URL changes (e.g. browser back/forward or Hero search)
+  useEffect(() => {
+    setSearchTerm(searchParams.get('search') ?? '');
+    setSelectedCategory(searchParams.get('category') ?? 'all');
+    setSelectedLocation(searchParams.get('location') ?? 'all');
+  }, [searchParams]);
 
   useEffect(() => {
     const fetchProjects = async () => {
