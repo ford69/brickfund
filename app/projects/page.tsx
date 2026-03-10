@@ -202,12 +202,21 @@ export default function ProjectsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Locations</SelectItem>
-                  <SelectItem value="TX">Texas</SelectItem>
-                  <SelectItem value="FL">Florida</SelectItem>
-                  <SelectItem value="CO">Colorado</SelectItem>
-                  <SelectItem value="OR">Oregon</SelectItem>
-                  <SelectItem value="MA">Massachusetts</SelectItem>
-                  <SelectItem value="CA">California</SelectItem>
+                  <SelectItem value="Accra">Accra</SelectItem>
+                  <SelectItem value="Kumasi">Kumasi</SelectItem>
+                  <SelectItem value="Tamale">Tamale</SelectItem>
+                  <SelectItem value="Sekondi-Takoradi">Sekondi-Takoradi</SelectItem>
+                  <SelectItem value="Ashaiman">Ashaiman</SelectItem>
+                  <SelectItem value="Tema">Tema</SelectItem>
+                  <SelectItem value="Teshie">Teshie</SelectItem>
+                  <SelectItem value="Cape Coast">Cape Coast</SelectItem>
+                  <SelectItem value="Obuasi">Obuasi</SelectItem>
+                  <SelectItem value="Tema Metropolitan">Tema Metropolitan</SelectItem>
+                  <SelectItem value="Koforidua">Koforidua</SelectItem>
+                  <SelectItem value="Wa">Wa</SelectItem>
+                  <SelectItem value="Sunyani">Sunyani</SelectItem>
+                  <SelectItem value="Ho">Ho</SelectItem>
+                  <SelectItem value="Bolgatanga">Bolgatanga</SelectItem>
                 </SelectContent>
               </Select>
 

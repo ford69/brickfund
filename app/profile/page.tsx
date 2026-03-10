@@ -75,6 +75,25 @@ export default function Profile() {
     }
   }, [searchParams]);
 
+  useEffect(() => {
+    if (!user) return;
+    const u = user as any;
+    setProfileData(prev => ({
+      ...prev,
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      email: user.email || '',
+      phone: user.phone || '',
+      dateOfBirth: u?.dateOfBirth ?? prev.dateOfBirth,
+      address: u?.address ?? prev.address,
+      city: u?.city ?? prev.city,
+      state: u?.state ?? prev.state,
+      zipCode: u?.zipCode ?? prev.zipCode,
+      country: u?.country ?? 'Ghana',
+      bio: u?.bio ?? prev.bio,
+    }));
+  }, [user]);
+
   const [profileData, setProfileData] = useState({
     firstName: user?.firstName || '',
     lastName: user?.lastName || '',
@@ -154,11 +173,37 @@ export default function Profile() {
   const handleSave = async () => {
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setIsEditing(false);
-    } catch (error) {
+      // Send only fields your backend allows (many backends return "Invalid updates" for unknown schema fields)
+      const payload: Record<string, string> = {};
+      if (profileData.phone !== undefined) payload.phone = profileData.phone;
+      if (profileData.dateOfBirth) payload.dateOfBirth = profileData.dateOfBirth;
+      if (profileData.address) payload.address = profileData.address;
+      if (profileData.city) payload.city = profileData.city;
+      if (profileData.state) payload.state = profileData.state;
+      if (profileData.zipCode) payload.zipCode = profileData.zipCode;
+      if (profileData.country) payload.country = profileData.country;
+      if (profileData.bio) payload.bio = profileData.bio;
+      if (profileData.occupation) payload.occupation = profileData.occupation;
+      if (profileData.annualIncome) payload.annualIncome = profileData.annualIncome;
+
+      if (Object.keys(payload).length === 0) {
+        setIsEditing(false);
+        setIsLoading(false);
+        return;
+      }
+
+      const response = await apiClient.updateUserProfile(payload as any);
+      if (response.success && response.data) {
+        await updateUser(response.data);
+        setIsEditing(false);
+        toast({ title: 'Profile updated', description: 'Your changes have been saved.' });
+      } else {
+        toast({ title: 'Update failed', description: response.message ?? 'Could not save profile.', variant: 'destructive' });
+      }
+    } catch (error: any) {
       console.error('Error saving profile:', error);
+      const msg = error?.message ?? 'Could not save profile. Please try again.';
+      toast({ title: 'Update failed', description: msg, variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
@@ -230,10 +275,18 @@ export default function Profile() {
         await updateUser({ avatarUrl: result.data.avatarUrl });
         toast({ title: 'Profile picture updated', description: 'Your avatar is now visible across the site.' });
       } else {
-        toast({ title: 'Upload failed', description: result.message || 'Could not update profile picture.', variant: 'destructive' });
+        toast({
+          title: 'Upload failed',
+          description: result.message ?? 'Profile picture upload is not available. Your server may need to enable POST /api/users/profile/avatar or /api/documents.',
+          variant: 'destructive',
+        });
       }
     } catch (err) {
-      toast({ title: 'Upload failed', description: err instanceof Error ? err.message : 'Could not upload image.', variant: 'destructive' });
+      toast({
+        title: 'Upload failed',
+        description: err instanceof Error ? err.message : 'Profile picture upload is not available on this server. See docs/BACKEND_PROFILE_AND_PROJECTS.md.',
+        variant: 'destructive',
+      });
     } finally {
       setAvatarUploading(false);
     }
@@ -358,8 +411,10 @@ export default function Profile() {
                     <Input
                       id="firstName"
                       value={profileData.firstName}
-                      onChange={(e) => handleInputChange('firstName', e.target.value)}
-                      disabled={!isEditing}
+                      readOnly
+                      disabled
+                      className="bg-muted cursor-not-allowed"
+                      title="First name cannot be changed"
                     />
                   </div>
                   <div>
@@ -367,8 +422,10 @@ export default function Profile() {
                     <Input
                       id="lastName"
                       value={profileData.lastName}
-                      onChange={(e) => handleInputChange('lastName', e.target.value)}
-                      disabled={!isEditing}
+                      readOnly
+                      disabled
+                      className="bg-muted cursor-not-allowed"
+                      title="Last name cannot be changed"
                     />
                   </div>
                 </div>
@@ -380,8 +437,10 @@ export default function Profile() {
                       id="email"
                       type="email"
                       value={profileData.email}
-                      onChange={(e) => handleInputChange('email', e.target.value)}
-                      disabled={!isEditing}
+                      readOnly
+                      disabled
+                      className="bg-muted cursor-not-allowed"
+                      title="Email cannot be changed"
                     />
                   </div>
                   <div>
