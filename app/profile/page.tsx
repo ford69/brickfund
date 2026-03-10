@@ -78,6 +78,13 @@ export default function Profile() {
   useEffect(() => {
     if (!user) return;
     const u = user as any;
+    const rawAddress = u?.address;
+    const addressStr =
+      typeof rawAddress === 'string'
+        ? rawAddress
+        : rawAddress && typeof rawAddress === 'object'
+          ? rawAddress.street ?? rawAddress.line1 ?? rawAddress.addressLine1 ?? rawAddress.address ?? ''
+          : '';
     setProfileData(prev => ({
       ...prev,
       firstName: user.firstName || '',
@@ -85,7 +92,7 @@ export default function Profile() {
       email: user.email || '',
       phone: user.phone || '',
       dateOfBirth: u?.dateOfBirth ?? prev.dateOfBirth,
-      address: u?.address ?? prev.address,
+      address: addressStr || prev.address,
       city: u?.city ?? prev.city,
       state: u?.state ?? prev.state,
       zipCode: u?.zipCode ?? prev.zipCode,
@@ -488,7 +495,7 @@ export default function Profile() {
                   <Label htmlFor="address">Street Address</Label>
                   <Input
                     id="address"
-                    value={profileData.address}
+                    value={typeof profileData.address === 'string' ? profileData.address : ''}
                     onChange={(e) => handleInputChange('address', e.target.value)}
                     disabled={!isEditing}
                   />
