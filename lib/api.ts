@@ -532,6 +532,9 @@ class ApiClient {
     minROI?: number;
     maxROI?: number;
     search?: string;
+    /** Filter by project owner/developer ID (backend may support ownerId or developerId) */
+    ownerId?: string;
+    developerId?: string;
   }) {
     const searchParams = new URLSearchParams();
     
@@ -661,6 +664,58 @@ class ApiClient {
   }
 
   // User API
+  /**
+   * Fetch public profile of a project owner by ID. Used on the Owner Profile page.
+   * Tries GET /owners/:id then GET /users/:id/public. If neither exists, returns { success: false }.
+   */
+  async getOwnerPublicProfile(ownerId: string): Promise<ApiResponse<User & { totalProjects?: number; averageRating?: number; totalRaised?: number }>> {
+    type OwnerProfile = User & { totalProjects?: number; averageRating?: number; totalRaised?: number };
+    try {
+      return await this.request<OwnerProfile>(`/owners/${ownerId}`);
+    } catch {
+      try {
+        const res = await this.request<User>(`/users/${ownerId}/public`);
+        return res as ApiResponse<OwnerProfile>;
+      } catch {
+        return { success: false, message: 'Owner profile not found' };
+      }
+    }
+  }
+
+  /**
+   * Fetch public profile of an investor by ID. Used on the Investor Profile page.
+   * Tries GET /investors/:id then GET /users/:id/public.
+   */
+  async getInvestorPublicProfile(investorId: string): Promise<ApiResponse<User & { totalInvested?: number; investmentCount?: number }>> {
+    type InvestorProfile = User & { totalInvested?: number; investmentCount?: number };
+    try {
+      return await this.request<InvestorProfile>(`/investors/${investorId}`);
+    } catch {
+      try {
+        const res = await this.request<User>(`/users/${investorId}/public`);
+        return res as ApiResponse<InvestorProfile>;
+      } catch {
+        return { success: false, message: 'Investor profile not found' };
+      }
+    }
+  }
+
+  /**
+   * Fetch investments for a given investor (for public profile). Tries GET /investors/:id/investments.
+   * Returns list of investments with project details when available.
+   */
+  async getInvestorInvestments(investorId: string, params?: { limit?: number }): Promise<ApiResponse<(Investment & { project?: Project })[]>> {
+    const searchParams = new URLSearchParams();
+    if (params?.limit) searchParams.set('limit', String(params.limit));
+    const qs = searchParams.toString();
+    const endpoint = qs ? `/investors/${investorId}/investments?${qs}` : `/investors/${investorId}/investments`;
+    try {
+      return await this.request<(Investment & { project?: Project })[]>(endpoint);
+    } catch {
+      return { success: false, data: [], message: 'Investments not available' };
+    }
+  }
+
   async getUserProfile() {
     return this.request<User>('/users/profile');
   }

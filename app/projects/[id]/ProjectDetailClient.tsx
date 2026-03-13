@@ -343,14 +343,23 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
                   </ul>
                 </div>
 
-                {/* Developer Info - only show when developer exists */}
+                {/* Developer / Project Owner - link to owner profile */}
                 {project.developer && (
                 <div className="border-t pt-6">
-                  <h3 className="text-lg font-semibold mb-3">Developer Information</h3>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <p className="font-medium">{project.developer.firstName} {project.developer.lastName}</p>
-                    <p className="text-sm text-gray-600">{(project.developer as any).companyName || 'Developer'}</p>
-                  </div>
+                  <h3 className="text-lg font-semibold mb-3">Project Owner</h3>
+                  <Link href={`/owners/${project.developer._id}`}>
+                    <div className="bg-gray-50 p-4 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer flex items-center justify-between group">
+                      <div>
+                        <p className="font-medium text-gray-900 group-hover:text-blue-600">
+                          {project.developer.firstName} {project.developer.lastName}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          {(project.developer as any).companyName || 'Project Owner'}
+                        </p>
+                      </div>
+                      <span className="text-sm text-blue-600 group-hover:underline">View profile →</span>
+                    </div>
+                  </Link>
                 </div>
                 )}
               </CardContent>

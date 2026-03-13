@@ -410,18 +410,28 @@ export default function OwnerDashboard() {
                   <p className="text-sm text-gray-600">No recent investor activity.</p>
                 ) : (
                   <div className="space-y-3">
-                    {recentInvestors.map((investor) => (
-                      <div key={investor._id} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div>
-                          <p className="font-medium text-gray-900">{investor.name}</p>
-                          <p className="text-sm text-gray-600">{getInvestorProjectName(investor)}</p>
+                    {recentInvestors.map((investor) => {
+                      const investorId = (investor as any).userId ?? investor._id;
+                      return (
+                        <div key={investor._id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div>
+                            <Link href={`/investors/${investorId}`} className="font-medium text-gray-900 hover:text-blue-600 hover:underline">
+                              {investor.name}
+                            </Link>
+                            <p className="text-sm text-gray-600">{getInvestorProjectName(investor)}</p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div className="text-right">
+                              <p className="font-medium text-gray-900">{formatCurrency(investor.amount)}</p>
+                              <p className="text-xs text-gray-600">{investor.date}</p>
+                            </div>
+                            <Link href={`/investors/${investorId}`}>
+                              <Button variant="ghost" size="sm">View profile</Button>
+                            </Link>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <p className="font-medium text-gray-900">{formatCurrency(investor.amount)}</p>
-                          <p className="text-xs text-gray-600">{investor.date}</p>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </CardContent>
@@ -524,29 +534,40 @@ export default function OwnerDashboard() {
                           <th className="text-left py-3 px-4 font-medium text-gray-900">Amount</th>
                           <th className="text-left py-3 px-4 font-medium text-gray-900">Date</th>
                           <th className="text-left py-3 px-4 font-medium text-gray-900">Status</th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-900">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {recentInvestors.map((investor) => (
-                          <tr key={investor._id} className="border-b">
-                            <td className="py-3 px-4">
-                              <div className="flex items-center">
-                                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                                  <Users className="h-4 w-4 text-blue-600" />
+                        {recentInvestors.map((investor) => {
+                          const investorId = (investor as any).userId ?? investor._id;
+                          return (
+                            <tr key={investor._id} className="border-b">
+                              <td className="py-3 px-4">
+                                <div className="flex items-center">
+                                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                                    <Users className="h-4 w-4 text-blue-600" />
+                                  </div>
+                                  <Link href={`/investors/${investorId}`} className="font-medium hover:text-blue-600 hover:underline">
+                                    {investor.name}
+                                  </Link>
                                 </div>
-                                <span className="font-medium">{investor.name}</span>
-                              </div>
-                            </td>
-                            <td className="py-3 px-4 text-gray-600">{getInvestorProjectName(investor)}</td>
-                            <td className="py-3 px-4 font-medium">{formatCurrency(investor.amount)}</td>
-                            <td className="py-3 px-4 text-gray-600">{investor.date}</td>
-                            <td className="py-3 px-4">
-                              <Badge className={getStatusColor(investor.status)}>
-                                {investor.status}
-                              </Badge>
-                            </td>
-                          </tr>
-                        ))}
+                              </td>
+                              <td className="py-3 px-4 text-gray-600">{getInvestorProjectName(investor)}</td>
+                              <td className="py-3 px-4 font-medium">{formatCurrency(investor.amount)}</td>
+                              <td className="py-3 px-4 text-gray-600">{investor.date}</td>
+                              <td className="py-3 px-4">
+                                <Badge className={getStatusColor(investor.status)}>
+                                  {investor.status}
+                                </Badge>
+                              </td>
+                              <td className="py-3 px-4">
+                                <Link href={`/investors/${investorId}`}>
+                                  <Button variant="ghost" size="sm">View profile</Button>
+                                </Link>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>

@@ -98,6 +98,28 @@ If the frontend gets **"Update failed, Invalid updates"**, the backend is reject
 
 ---
 
+## 4. Investor public profile (for developers)
+
+Developers (owners) can view an overview of an investor: profile and which projects they’ve invested in. The frontend uses:
+
+**Pages:** `/investors/[id]` – public investor profile (name, avatar, total invested, project count, list of projects invested in).
+
+**API behaviour:**
+
+1. **GET /api/investors/:id** (or **GET /api/users/:id/public**)  
+   - Public (no auth required for viewing).  
+   - Return a limited user object for that investor: e.g. `firstName`, `lastName`, `avatarUrl`, `role`, and optionally `totalInvested`, `investmentCount`.  
+   - If you don’t have `/investors/:id`, the frontend falls back to **GET /api/users/:id/public**.
+
+2. **GET /api/investors/:id/investments?limit=50**  
+   - Public (or require auth if you prefer).  
+   - Return a list of investments for that user (investor), with optional `project` populated (title, location, status, raisedAmount, targetAmount).  
+   - If this endpoint is not implemented, the frontend shows “No investments to display” for that profile.
+
+**Owner dashboard:** The “Recent Investors” and “All Investors” sections link each investor to `/investors/[id]`. The frontend uses `userId` from each recent-investor item when the backend sends it; otherwise it uses `_id` from the list item. Backend should include `userId` (investor’s user id) in recent investors payload when possible so “View profile” links resolve correctly.
+
+---
+
 ## Summary
 
 | Feature | Frontend | Backend |
@@ -105,3 +127,4 @@ If the frontend gets **"Update failed, Invalid updates"**, the backend is reject
 | Profile picture | POST /users/profile/avatar or POST /documents + PUT /users/profile | Implement avatar and/or documents upload; user model has `avatarUrl`; PUT /users/profile accepts `avatarUrl`. |
 | Edit profile | PUT /users/profile with phone, address, city, state, zipCode, country, bio, etc. (no firstName, lastName, email) | PUT /users/profile updates only allowed fields; ignore or reject firstName, lastName, email. |
 | Browse by location | GET /projects?location=Accra (Ghana city name) | GET /projects accepts `location` and filters by `location.city` (or equivalent). |
+| Investor profile | GET /investors/:id, GET /investors/:id/investments; fallback GET /users/:id/public | Optional: GET /investors/:id and GET /investors/:id/investments; or GET /users/:id/public. Owner dashboard recent investors should include `userId` for profile links. |
