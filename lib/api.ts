@@ -82,13 +82,14 @@ export interface User {
   email: string;
   phone?: string;
   companyName?: string;
-  /** Profile picture URL (investor/owner avatar) */
+  /** Profile picture URL (investor/owner/customer avatar) */
   avatarUrl?: string;
   // Role-based access:
-  // - 'investor' → standard investing user
+  // - 'investor' → standard investing user (can invest in projects)
   // - 'owner' → project owner / owner dashboard
+  // - 'customer' → marketplace-only user (can shop but not invest or own projects)
   // - 'admin' → platform administrator
-  role: 'investor' | 'owner' | 'admin';
+  role: 'investor' | 'owner' | 'customer' | 'admin';
   kycStatus: 'pending' | 'verified' | 'rejected';
   kycDocuments?: KycDocuments;
   hasUploadedDocuments?: boolean;
@@ -320,6 +321,12 @@ export interface MarketplaceItem {
   category: string;
   price: number;
   currency: string;
+  /** Pricing unit metadata (optional, for building materials/tools) */
+  unitType?: string;   // e.g. 'piece', 'bundle', 'bag', 'm3'
+  unitLabel?: string;  // e.g. 'bundle of 10 planks', 'per cubic meter'
+  unitSize?: number;   // e.g. 10 when one unit represents 10 pieces
+  /** Fulfillment: small → motor bike, medium → mini truck, large → truck */
+  fulfillmentTier?: 'small' | 'medium' | 'large';
   image?: string;
   imageUrl?: string; // Cloudinary URL from backend
   images?: string[];
@@ -334,6 +341,17 @@ export function getMarketplaceItemImageUrl(item: MarketplaceItem | null | undefi
   return item.imageUrl ?? item.image ?? (item.images && item.images[0]) ?? null;
 }
 
+/** Order status for tracking (backend may use a subset or different labels) */
+export type OrderStatus =
+  | 'pending'      // Awaiting payment
+  | 'paid'         // Payment confirmed
+  | 'processing'   // Being prepared
+  | 'shipped'      // Dispatched
+  | 'out_for_delivery'
+  | 'delivered'
+  | 'failed'
+  | 'cancelled';
+
 export interface MarketplacePurchase {
   _id: string;
   userId: string;
@@ -342,9 +360,23 @@ export interface MarketplacePurchase {
   amount: number;
   currency: string;
   status: 'pending' | 'completed' | 'failed' | 'cancelled';
+  /** Extended status for order tracking (if backend supports) */
+  orderStatus?: OrderStatus;
   paymentReference?: string;
   createdAt: string;
   updatedAt: string;
+  /** Fulfillment */
+  fulfillmentMethod?: 'delivery' | 'pickup';
+  deliveryZoneId?: string;
+  deliveryZoneName?: string;
+  deliveryAddress?: string;
+  /** Tracking */
+  estimatedDeliveryAt?: string;
+  deliveredAt?: string;
+  trackingNumber?: string;
+  trackingUrl?: string;
+  /** Multi-item orders: line items (backend may populate for cart orders) */
+  items?: Array<{ itemId: string; item?: MarketplaceItem; quantity: number; price: number }>;
 }
 
 // API Client Class
@@ -1244,8 +1276,12 @@ class ApiClient {
   }
 
   async getMarketplaceItem(itemId: string) {
-    // Try admin endpoint first, fallback to regular endpoint
-    return this.request<MarketplaceItem>(`/admin/marketplace/items/${itemId}`);
+    // Public endpoint for product detail (guests + logged-in). Backend must allow GET without auth.
+    try {
+      return await this.request<MarketplaceItem>(`/marketplace/items/${itemId}`);
+    } catch {
+      return this.request<MarketplaceItem>(`/admin/marketplace/items/${itemId}`);
+    }
   }
 
   async createMarketplaceItem(itemData: {
@@ -1254,6 +1290,14 @@ class ApiClient {
     category: string;
     price: number;
     currency: string;
+    sku?: string;
+    brand?: string;
+    stock?: number;
+    unitType?: string;
+    unitLabel?: string;
+    unitSize?: number;
+    fulfillmentTier?: 'small' | 'medium' | 'large';
+    tags?: string[];
     image?: string;
     images?: string[];
     isActive?: boolean;
@@ -1330,6 +1374,30 @@ class ApiClient {
     });
   }
 
+  /**
+   * Initialize Paystack payment for cart checkout.
+   * Backend: POST /marketplace/purchase/initialize-cart
+   * Body: { items: [{ itemId: string, quantity: number }], successUrl?: string, cancelUrl?: string }
+   * Returns: { authorization_url, reference } for total cart amount.
+   */
+  async initializeMarketplaceCartPurchase(items: { itemId: string; quantity: number }[], options?: { successUrl?: string; cancelUrl?: string }) {
+    return this.request<{
+      authorization_url?: string;
+      authorizationUrl?: string;
+      access_code?: string;
+      accessCode?: string;
+      reference: string;
+      paymentId?: string;
+    }>('/marketplace/purchase/initialize-cart', {
+      method: 'POST',
+      body: JSON.stringify({
+        items,
+        successUrl: options?.successUrl,
+        cancelUrl: options?.cancelUrl,
+      }),
+    });
+  }
+
   async getMarketplacePurchases(params?: { page?: number; limit?: number }) {
     const searchParams = new URLSearchParams();
     if (params) {
@@ -1342,6 +1410,10 @@ class ApiClient {
     const queryString = searchParams.toString();
     const endpoint = queryString ? `/marketplace/purchases?${queryString}` : '/marketplace/purchases';
     return this.request<MarketplacePurchase[]>(endpoint);
+  }
+
+  async getMarketplaceOrder(orderId: string) {
+    return this.request<MarketplacePurchase>(`/marketplace/purchases/${orderId}`);
   }
 }
 

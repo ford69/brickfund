@@ -4,6 +4,7 @@ import Script from 'next/script';
 import { Plus_Jakarta_Sans } from 'next/font/google';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { AuthModalProvider } from '@/contexts/AuthModalContext';
+import { CartProvider } from '@/contexts/CartContext';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { Toaster } from '@/components/ui/toaster';
 import AuthModal from '@/components/AuthModal';
@@ -49,11 +50,13 @@ export default function RootLayout({
         <Script id="theme-init" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <ThemeProvider>
           <AuthProvider>
-            <AuthModalProvider>
-              {children}
+            <CartProvider>
+              <AuthModalProvider>
+                {children}
               <AuthModal />
               <Toaster />
-            </AuthModalProvider>
+              </AuthModalProvider>
+            </CartProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

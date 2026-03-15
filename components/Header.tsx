@@ -14,14 +14,16 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Menu, X, Building2, User, Shield, LogOut, ChevronDown } from 'lucide-react';
+import { Menu, X, Building2, User, Shield, LogOut, ChevronDown, Store, ShoppingCart } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAuthModal } from '@/contexts/AuthModalContext';
+import { useCart } from '@/contexts/CartContext';
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false);
   const { user, isAuthenticated, logout } = useAuth();
   const { openAuthModal } = useAuthModal();
+  const { itemCount } = useCart();
 
   const handleLogout = async () => {
     try {
@@ -70,9 +72,24 @@ export default function Header() {
             <Link href="/#contact" className={navLinkClass}>
               Contact Us
             </Link>
+            <Link href="/marketplace" className={navLinkClass}>
+              Marketplace
+            </Link>
           </nav>
 
           <div className="hidden md:flex items-center gap-3">
+            <Link
+              href="/checkout"
+              className="relative flex items-center justify-center w-9 h-9 rounded-lg text-white/90 hover:bg-white/10 hover:text-white transition-colors"
+              aria-label={`Cart${itemCount > 0 ? `, ${itemCount} items` : ''}`}
+            >
+              <ShoppingCart className="h-5 w-5" />
+              {itemCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[1.25rem] h-5 px-1 flex items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                  {itemCount > 99 ? '99+' : itemCount}
+                </span>
+              )}
+            </Link>
             {isAuthenticated ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -116,7 +133,9 @@ export default function Header() {
                           ? '/admin'
                           : user?.role === 'owner'
                             ? '/owner-dashboard'
-                            : '/dashboard'
+                            : user?.role === 'investor'
+                              ? '/dashboard'
+                              : '/marketplace'
                       }
                       className="flex items-center rounded-lg cursor-pointer"
                     >
@@ -136,6 +155,12 @@ export default function Header() {
                         <>
                           <User className="mr-2 h-4 w-4" />
                           Investor Dashboard
+                        </>
+                      )}
+                      {user?.role === 'customer' && (
+                        <>
+                          <Store className="mr-2 h-4 w-4" />
+                          Marketplace
                         </>
                       )}
                     </Link>
@@ -230,6 +255,21 @@ export default function Header() {
               >
                 Contact Us
               </Link>
+              <Link
+                href="/marketplace"
+                className="px-3 py-2.5 rounded-lg font-medium text-foreground hover:bg-accent transition-colors"
+                onClick={() => setIsOpen(false)}
+              >
+                Marketplace
+              </Link>
+              <Link
+                href="/checkout"
+                className="px-3 py-2.5 rounded-lg font-medium text-foreground hover:bg-accent transition-colors flex items-center gap-2"
+                onClick={() => setIsOpen(false)}
+              >
+                <ShoppingCart className="h-4 w-4" />
+                Cart{itemCount > 0 ? ` (${itemCount})` : ''}
+              </Link>
               <div className="mt-3 pt-3 border-t border-border flex flex-col gap-1">
                 {isAuthenticated ? (
                   <>
@@ -262,7 +302,9 @@ export default function Header() {
                           ? '/admin'
                           : user?.role === 'owner'
                             ? '/owner-dashboard'
-                            : '/dashboard'
+                            : user?.role === 'investor'
+                              ? '/dashboard'
+                              : '/marketplace'
                       }
                       onClick={() => setIsOpen(false)}
                     >
@@ -283,6 +325,12 @@ export default function Header() {
                           <>
                             <User className="h-4 w-4 mr-2" />
                             Investor Dashboard
+                          </>
+                        )}
+                        {user?.role === 'customer' && (
+                          <>
+                            <Store className="h-4 w-4 mr-2" />
+                            Marketplace
                           </>
                         )}
                       </Button>

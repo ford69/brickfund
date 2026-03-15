@@ -15,8 +15,12 @@ import {
   Clock,
   XCircle,
   Receipt,
+  Package,
+  Truck,
+  ChevronRight,
+  Calendar,
 } from 'lucide-react';
-import { apiClient, MarketplacePurchase } from '@/lib/api';
+import { apiClient, MarketplacePurchase, type OrderStatus } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import Header from '@/components/Header';
@@ -28,22 +32,26 @@ export default function PurchaseHistory() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (isAuthenticated && user && user.role !== 'owner') {
-      if (user.role === 'investor') {
-        router.push('/dashboard');
-        toast({
-          title: 'Access Denied',
-          description: 'Marketplace is only available for real estate companies',
-          variant: 'destructive',
-        });
-      } else {
-        router.push('/dashboard');
-      }
+    if (!isAuthenticated) return;
+
+    if (!user) {
+      router.push('/signin?redirect=/marketplace/purchases');
       return;
     }
-    if (isAuthenticated) {
+
+    // Allow owners and customers to view marketplace purchase history.
+    if (user.role === 'owner' || user.role === 'customer') {
       fetchPurchases();
+      return;
     }
+
+    // Investors and admins are redirected away from marketplace purchases.
+    router.push(user.role === 'admin' ? '/admin' : '/dashboard');
+    toast({
+      title: 'Access Denied',
+      description: 'Marketplace purchases are only available for marketplace customers and business accounts.',
+      variant: 'destructive',
+    });
   }, [user, isAuthenticated, router]);
 
   const fetchPurchases = async () => {
@@ -82,39 +90,43 @@ export default function PurchaseHistory() {
     });
   };
 
+  const formatDateTime = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const displayStatus = (p: MarketplacePurchase): OrderStatus | string => {
+    if (p.orderStatus) return p.orderStatus;
+    if (p.status === 'completed') return 'delivered';
+    return p.status;
+  };
+
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return (
-          <Badge className="bg-emerald-50 text-emerald-700 border-0 font-medium rounded-lg gap-1">
-            <CheckCircle className="h-3.5 w-3" />
-            Completed
-          </Badge>
-        );
-      case 'pending':
-        return (
-          <Badge className="bg-amber-50 text-amber-700 border-0 font-medium rounded-lg gap-1">
-            <Clock className="h-3.5 w-3" />
-            Pending
-          </Badge>
-        );
-      case 'failed':
-        return (
-          <Badge className="bg-red-50 text-red-700 border-0 font-medium rounded-lg gap-1">
-            <XCircle className="h-3.5 w-3" />
-            Failed
-          </Badge>
-        );
-      case 'cancelled':
-        return (
-          <Badge className="bg-muted text-muted-foreground border-0 font-medium rounded-lg gap-1">
-            <XCircle className="h-3.5 w-3" />
-            Cancelled
-          </Badge>
-        );
-      default:
-        return <Badge className="rounded-lg">{status}</Badge>;
-    }
+    const s = status.toLowerCase();
+    const badges: Record<string, { label: string; className: string; icon: typeof Clock }> = {
+      pending: { label: 'Pending payment', className: 'bg-amber-50 text-amber-700 border-0', icon: Clock },
+      paid: { label: 'Paid', className: 'bg-blue-50 text-blue-700 border-0', icon: CheckCircle },
+      processing: { label: 'Processing', className: 'bg-slate-100 text-slate-700 border-0', icon: Package },
+      shipped: { label: 'Shipped', className: 'bg-indigo-50 text-indigo-700 border-0', icon: Truck },
+      out_for_delivery: { label: 'Out for delivery', className: 'bg-indigo-50 text-indigo-700 border-0', icon: Truck },
+      delivered: { label: 'Delivered', className: 'bg-emerald-50 text-emerald-700 border-0', icon: CheckCircle },
+      completed: { label: 'Completed', className: 'bg-emerald-50 text-emerald-700 border-0', icon: CheckCircle },
+      failed: { label: 'Failed', className: 'bg-red-50 text-red-700 border-0', icon: XCircle },
+      cancelled: { label: 'Cancelled', className: 'bg-muted text-muted-foreground border-0', icon: XCircle },
+    };
+    const config = badges[s] || { label: status, className: 'rounded-lg', icon: Clock };
+    const Icon = config.icon;
+    return (
+      <Badge className={`${config.className} font-medium rounded-lg gap-1`}>
+        <Icon className="h-3.5 w-3" />
+        {config.label}
+      </Badge>
+    );
   };
 
   if (!isAuthenticated) {
@@ -159,9 +171,9 @@ export default function PurchaseHistory() {
             </Link>
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
-                Purchase History
+                My Orders
               </h1>
-              <p className="text-muted-foreground mt-0.5">All items you&apos;ve purchased from the marketplace</p>
+              <p className="text-muted-foreground mt-0.5">Track status, delivery date, and view order details</p>
             </div>
           </div>
           <Link href="/marketplace">
@@ -216,7 +228,10 @@ export default function PurchaseHistory() {
                   <thead>
                     <tr className="border-b border-border bg-background/50">
                       <th className="text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider px-6 py-4">
-                        Item
+                        Order
+                      </th>
+                      <th className="text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider px-6 py-4">
+                        Item(s)
                       </th>
                       <th className="text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider px-6 py-4">
                         Amount
@@ -224,11 +239,14 @@ export default function PurchaseHistory() {
                       <th className="text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider px-6 py-4">
                         Status
                       </th>
-                      <th className="text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider px-6 py-4">
-                        Date
+                      <th className="text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider px-6 py-4 hidden lg:table-cell">
+                        Est. delivery
                       </th>
                       <th className="text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider px-6 py-4 hidden md:table-cell">
-                        Reference
+                        Tracking
+                      </th>
+                      <th className="text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider px-6 py-4">
+                       
                       </th>
                     </tr>
                   </thead>
@@ -238,23 +256,42 @@ export default function PurchaseHistory() {
                         purchase.item ||
                         (typeof purchase.itemId === 'object' ? purchase.itemId : null);
                       const itemName =
-                        item && typeof item === 'object' ? item.name : 'Unknown Item';
+                        item && typeof item === 'object' ? item.name : 'Order items';
+                      const orderLabel = purchase.items?.length
+                        ? `${purchase.items.length} item(s)`
+                        : itemName;
 
                       return (
                         <tr
                           key={purchase._id}
                           className="bg-card hover:bg-background/50 transition-colors"
                         >
-                          <td className="px-6 py-4 font-medium text-foreground">{itemName}</td>
+                          <td className="px-6 py-4 text-sm font-mono text-muted-foreground">
+                            #{purchase._id.slice(-8).toUpperCase()}
+                          </td>
+                          <td className="px-6 py-4 font-medium text-foreground">{orderLabel}</td>
                           <td className="px-6 py-4 text-foreground font-medium">
                             {formatCurrency(purchase.amount, purchase.currency)}
                           </td>
-                          <td className="px-6 py-4">{getStatusBadge(purchase.status)}</td>
-                          <td className="px-6 py-4 text-muted-foreground text-sm">
-                            {formatDate(purchase.createdAt)}
+                          <td className="px-6 py-4">{getStatusBadge(displayStatus(purchase))}</td>
+                          <td className="px-6 py-4 text-muted-foreground text-sm hidden lg:table-cell">
+                            {purchase.estimatedDeliveryAt
+                              ? formatDate(purchase.estimatedDeliveryAt)
+                              : '—'}
                           </td>
-                          <td className="px-6 py-4 text-sm text-muted-foreground hidden md:table-cell font-mono">
-                            {purchase.paymentReference || '—'}
+                          <td className="px-6 py-4 text-sm hidden md:table-cell">
+                            {purchase.trackingNumber ? (
+                              <span className="font-mono text-foreground">{purchase.trackingNumber}</span>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4">
+                            <Link href={`/marketplace/orders/${purchase._id}`}>
+                              <Button variant="ghost" size="sm" className="text-primary hover:text-primary">
+                                Track <ChevronRight className="h-4 w-4 ml-0.5" />
+                              </Button>
+                            </Link>
                           </td>
                         </tr>
                       );

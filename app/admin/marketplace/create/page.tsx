@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -21,7 +21,9 @@ import {
   ArrowLeft,
   Save,
   Upload,
-  RefreshCw
+  RefreshCw,
+  Star,
+  X
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
@@ -37,11 +39,20 @@ export default function AdminMarketplaceCreate() {
     category: '',
     price: '',
     currency: 'GHS',
-    image: '',
+    sku: '',
+    brand: '',
+    stock: '0',
+    unitType: 'piece',
+    unitLabel: 'per piece',
+    unitSize: '',
+    fulfillmentTier: 'small' as 'small' | 'medium' | 'large',
+    tags: '',
+    images: [] as string[],
     isActive: true,
   });
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string>('');
+  const [newImageUrl, setNewImageUrl] = useState('');
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (user && user.role !== 'admin') {
@@ -50,25 +61,77 @@ export default function AdminMarketplaceCreate() {
     }
   }, [user, router]);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const addImageByUrl = () => {
+    const url = newImageUrl.trim();
+    if (!url) return;
+    setFormData((prev) => ({ ...prev, images: [...prev.images, url] }));
+    setNewImageUrl('');
+  };
+
+  const removeImage = (index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index),
+    }));
+  };
+
+  const setPrimaryImage = (index: number) => {
+    if (index === 0) return;
+    setFormData((prev) => {
+      const next = [...prev.images];
+      const [removed] = next.splice(index, 1);
+      next.unshift(removed);
+      return { ...prev, images: next };
+    });
+  };
+
+  const handleUploadImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setImageFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    e.target.value = '';
+    try {
+      setUploadingImage(true);
+      const formDataUpload = new FormData();
+      formDataUpload.append('files', file);
+      formDataUpload.append('category', 'marketplace');
+      const res = await apiClient.uploadDocuments(formDataUpload);
+      const data = (res as any)?.data ?? (res as any);
+      const arr = Array.isArray(data) ? data : [];
+      const first = arr[0];
+      const url = first?.url ?? first?.fileUrl;
+      if (url) {
+        setFormData((prev) => ({ ...prev, images: [...prev.images, url] }));
+      } else {
+        throw new Error('No URL returned from upload');
+      }
+    } catch (err) {
+      toast({
+        title: 'Upload failed',
+        description: err instanceof Error ? err.message : 'Could not upload image',
+        variant: 'destructive',
+      });
+    } finally {
+      setUploadingImage(false);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.description || !formData.category || !formData.price) {
+    const stockNumber = parseInt(formData.stock, 10);
+    if (!formData.name || !formData.description || !formData.category || !formData.price || Number.isNaN(stockNumber)) {
       toast({
         title: 'Error',
-        description: 'Please fill in all required fields',
+        description: 'Please fill in all required fields, including a valid stock quantity',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (stockNumber < 0) {
+      toast({
+        title: 'Error',
+        description: 'Stock quantity cannot be negative',
         variant: 'destructive',
       });
       return;
@@ -77,51 +140,35 @@ export default function AdminMarketplaceCreate() {
     try {
       setIsLoading(true);
 
-      if (imageFile) {
-        // Single request with multipart/form-data to backend endpoint with-image
-        const multipartFormData = new FormData();
-        multipartFormData.append('name', formData.name);
-        multipartFormData.append('description', formData.description);
-        multipartFormData.append('category', formData.category);
-        multipartFormData.append('price', formData.price);
-        multipartFormData.append('currency', formData.currency);
-        multipartFormData.append('isActive', String(formData.isActive));
-        multipartFormData.append('image', imageFile);
+      const itemData = {
+        name: formData.name,
+        description: formData.description,
+        category: formData.category,
+        price: parseFloat(formData.price),
+        currency: formData.currency,
+        sku: formData.sku || undefined,
+        brand: formData.brand || undefined,
+        stock: stockNumber,
+        unitType: formData.unitType || undefined,
+        unitLabel: formData.unitLabel || undefined,
+        unitSize: formData.unitSize ? parseFloat(formData.unitSize) : undefined,
+        fulfillmentTier: (formData.fulfillmentTier as 'small' | 'medium' | 'large') || undefined,
+        tags: formData.tags ? formData.tags.split(',').map((t) => t.trim()).filter(Boolean) : undefined,
+        images: formData.images.length ? formData.images : undefined,
+        image: formData.images[0] || undefined,
+        isActive: formData.isActive,
+      };
 
-        const response = await apiClient.createMarketplaceItemWithImage(multipartFormData);
-        
-        if (response.success) {
-          toast({
-            title: 'Success',
-            description: 'Marketplace item created successfully',
-          });
-          router.push('/admin/marketplace');
-        } else {
-          throw new Error(response.message || 'Failed to create item');
-        }
+      const response = await apiClient.createMarketplaceItem(itemData);
+
+      if (response.success) {
+        toast({
+          title: 'Success',
+          description: 'Marketplace item created successfully',
+        });
+        router.push('/admin/marketplace');
       } else {
-        // No image file: use JSON endpoint (optional image URL)
-        const itemData = {
-          name: formData.name,
-          description: formData.description,
-          category: formData.category,
-          price: parseFloat(formData.price),
-          currency: formData.currency,
-          image: formData.image || undefined,
-          isActive: formData.isActive,
-        };
-
-        const response = await apiClient.createMarketplaceItem(itemData);
-        
-        if (response.success) {
-          toast({
-            title: 'Success',
-            description: 'Marketplace item created successfully',
-          });
-          router.push('/admin/marketplace');
-        } else {
-          throw new Error(response.message || 'Failed to create item');
-        }
+        throw new Error(response.message || 'Failed to create item');
       }
     } catch (error: any) {
       toast({
@@ -203,11 +250,14 @@ export default function AdminMarketplaceCreate() {
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="software">Software</SelectItem>
-                    <SelectItem value="tools">Tools</SelectItem>
-                    <SelectItem value="services">Services</SelectItem>
-                    <SelectItem value="equipment">Equipment</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
+                    <SelectItem value="cement">Cement</SelectItem>
+                    <SelectItem value="steel">Steel & Iron Rods</SelectItem>
+                    <SelectItem value="blocks">Blocks & Bricks</SelectItem>
+                    <SelectItem value="wood">Timber & Wood</SelectItem>
+                    <SelectItem value="roofing">Roofing Materials</SelectItem>
+                    <SelectItem value="finishing">Finishing Materials</SelectItem>
+                    <SelectItem value="tools">Tools & Equipment</SelectItem>
+                    <SelectItem value="other">Other Building Materials</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -230,59 +280,205 @@ export default function AdminMarketplaceCreate() {
                 </div>
                 <div>
                   <Label htmlFor="currency">Currency *</Label>
-                  <Select
-                    value={formData.currency}
-                    onValueChange={(value) => setFormData({ ...formData, currency: value })}
-                  >
-                    <SelectTrigger className="mt-2">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="USD">USD</SelectItem>
-                      <SelectItem value="GHS">GHS</SelectItem>
-                      <SelectItem value="NGN">NGN</SelectItem>
-                      <SelectItem value="EUR">EUR</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Input
+                    id="currency"
+                    value="GHS"
+                    disabled
+                    className="mt-2"
+                  />
                 </div>
               </div>
 
-              {/* Image Upload */}
+              {/* SKU / Brand / Stock */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="sku">SKU (optional)</Label>
+                  <Input
+                    id="sku"
+                    value={formData.sku}
+                    onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                    placeholder="e.g. IRON-16MM-12M"
+                    className="mt-2"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="brand">Brand / Supplier (optional)</Label>
+                  <Input
+                    id="brand"
+                    value={formData.brand}
+                    onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
+                    placeholder="e.g. Dangote"
+                    className="mt-2"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="stock">Stock quantity</Label>
+                  <Input
+                    id="stock"
+                    type="number"
+                    min="0"
+                    value={formData.stock}
+                    onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                    placeholder="e.g. 100"
+                    className="mt-2"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Pricing unit */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="unitType">Pricing unit</Label>
+                  <Select
+                    value={formData.unitType}
+                    onValueChange={(value) => {
+                      let defaultLabel = 'per unit';
+                      if (value === 'piece') defaultLabel = 'per piece';
+                      else if (value === 'bundle') defaultLabel = 'per bundle';
+                      else if (value === 'bag') defaultLabel = 'per bag';
+                      else if (value === 'sheet') defaultLabel = 'per sheet';
+                      else if (value === 'm3') defaultLabel = 'per cubic meter';
+                      else if (value === 'meter') defaultLabel = 'per meter';
+                      setFormData((prev) => ({
+                        ...prev,
+                        unitType: value,
+                        unitLabel: prev.unitLabel === '' || prev.unitLabel === 'per unit' || prev.unitLabel.startsWith('per ')
+                          ? defaultLabel
+                          : prev.unitLabel,
+                      }));
+                    }}
+                  >
+                    <SelectTrigger className="mt-2">
+                      <SelectValue placeholder="Select unit" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="piece">Piece</SelectItem>
+                      <SelectItem value="bundle">Bundle</SelectItem>
+                      <SelectItem value="bag">Bag</SelectItem>
+                      <SelectItem value="sheet">Sheet</SelectItem>
+                      <SelectItem value="m3">Cubic meter</SelectItem>
+                      <SelectItem value="meter">Meter (length)</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="unitLabel">Unit label</Label>
+                  <Input
+                    id="unitLabel"
+                    value={formData.unitLabel}
+                    onChange={(e) => setFormData({ ...formData, unitLabel: e.target.value })}
+                    placeholder="e.g. per bundle of 10 planks"
+                    className="mt-2"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="unitSize">Unit size (optional)</Label>
+                  <Input
+                    id="unitSize"
+                    type="number"
+                    min="0"
+                    value={formData.unitSize}
+                    onChange={(e) => setFormData({ ...formData, unitSize: e.target.value })}
+                    placeholder="e.g. 10 (if one bundle = 10 pieces)"
+                    className="mt-2"
+                  />
+                </div>
+              </div>
+
+              {/* Tags */}
               <div>
-                <Label htmlFor="image">Image</Label>
-                <div className="mt-2 space-y-4">
-                  {imagePreview && (
-                    <div className="relative w-32 h-32">
-                      <img
-                        src={imagePreview}
-                        alt="Preview"
-                        className="w-full h-full object-cover rounded-lg"
-                      />
-                    </div>
-                  )}
-                  <div className="flex items-center space-x-4">
-                    <Input
-                      id="image"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      className="hidden"
-                    />
-                    <Label
-                      htmlFor="image"
-                      className="cursor-pointer flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                    >
-                      <Upload className="h-4 w-4" />
-                      <span>Upload Image</span>
-                    </Label>
-                    <Input
-                      type="text"
-                      value={formData.image}
-                      onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-                      placeholder="Or enter image URL"
-                      className="flex-1"
-                    />
+                <Label htmlFor="tags">Tags (optional)</Label>
+                <Input
+                  id="tags"
+                  value={formData.tags}
+                  onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+                  placeholder="e.g. iron rods, reinforcement, 16mm"
+                  className="mt-2"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Separate tags with commas. Used for search and filtering.
+                </p>
+              </div>
+
+              {/* Images (gallery) */}
+              <div>
+                <Label>Images</Label>
+                <p className="text-xs text-gray-500 mt-1 mb-2">
+                  Add image URLs or upload files. First image is the primary. You can reorder by setting primary.
+                </p>
+                {formData.images.length > 0 && (
+                  <div className="flex flex-wrap gap-3 mb-3">
+                    {formData.images.map((url, index) => (
+                      <div key={`${url}-${index}`} className="relative w-24 h-24 rounded-lg border border-gray-200 overflow-hidden bg-gray-50 group">
+                        <img src={url} alt="" className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1 transition-opacity">
+                          {index > 0 && (
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="secondary"
+                              className="h-8 w-8"
+                              onClick={() => setPrimaryImage(index)}
+                              title="Set as primary"
+                            >
+                              <Star className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="destructive"
+                            className="h-8 w-8"
+                            onClick={() => removeImage(index)}
+                            title="Remove"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        {index === 0 && (
+                          <span className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs text-center py-0.5">Primary</span>
+                        )}
+                      </div>
+                    ))}
                   </div>
+                )}
+                <div className="flex flex-wrap items-center gap-2">
+                  <Input
+                    type="url"
+                    value={newImageUrl}
+                    onChange={(e) => setNewImageUrl(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addImageByUrl())}
+                    placeholder="Image URL"
+                    className="w-48"
+                  />
+                  <Button type="button" variant="outline" size="sm" onClick={addImageByUrl}>
+                    Add URL
+                  </Button>
+                  <input
+                    ref={imageInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleUploadImage}
+                    className="hidden"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={uploadingImage}
+                    onClick={() => imageInputRef.current?.click()}
+                  >
+                    {uploadingImage ? (
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <>
+                        <Upload className="h-4 w-4 mr-1" />
+                        Upload
+                      </>
+                    )}
+                  </Button>
                 </div>
               </div>
 

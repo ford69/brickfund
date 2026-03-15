@@ -209,6 +209,17 @@ export default function OwnerDashboard() {
     return 'Project';
   };
 
+  const getInvestorUserId = (investor: OwnerDashboardData['recentInvestors'][number]) => {
+    const anyInvestor = investor as any;
+    return (
+      anyInvestor.userId ||
+      anyInvestor.investorId ||
+      anyInvestor.user?._id ||
+      anyInvestor.investor?._id ||
+      undefined
+    );
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -411,13 +422,25 @@ export default function OwnerDashboard() {
                 ) : (
                   <div className="space-y-3">
                     {recentInvestors.map((investor) => {
-                      const investorId = (investor as any).userId ?? investor._id;
+                      const investorId = getInvestorUserId(investor);
+                      const nameContent = (
+                        <span className="font-medium text-gray-900">
+                          {investor.name}
+                        </span>
+                      );
                       return (
                         <div key={investor._id} className="flex items-center justify-between p-3 border rounded-lg">
                           <div>
-                            <Link href={`/investors/${investorId}`} className="font-medium text-gray-900 hover:text-blue-600 hover:underline">
-                              {investor.name}
-                            </Link>
+                            {investorId ? (
+                              <Link
+                                href={`/investors/${investorId}`}
+                                className="hover:text-blue-600 hover:underline"
+                              >
+                                {nameContent}
+                              </Link>
+                            ) : (
+                              nameContent
+                            )}
                             <p className="text-sm text-gray-600">{getInvestorProjectName(investor)}</p>
                           </div>
                           <div className="flex items-center gap-3">
@@ -425,9 +448,11 @@ export default function OwnerDashboard() {
                               <p className="font-medium text-gray-900">{formatCurrency(investor.amount)}</p>
                               <p className="text-xs text-gray-600">{investor.date}</p>
                             </div>
-                            <Link href={`/investors/${investorId}`}>
-                              <Button variant="ghost" size="sm">View profile</Button>
-                            </Link>
+                            {investorId && (
+                              <Link href={`/investors/${investorId}`}>
+                                <Button variant="ghost" size="sm">View profile</Button>
+                              </Link>
+                            )}
                           </div>
                         </div>
                       );
@@ -539,7 +564,7 @@ export default function OwnerDashboard() {
                       </thead>
                       <tbody>
                         {recentInvestors.map((investor) => {
-                          const investorId = (investor as any).userId ?? investor._id;
+                          const investorId = getInvestorUserId(investor);
                           return (
                             <tr key={investor._id} className="border-b">
                               <td className="py-3 px-4">
@@ -547,9 +572,16 @@ export default function OwnerDashboard() {
                                   <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
                                     <Users className="h-4 w-4 text-blue-600" />
                                   </div>
-                                  <Link href={`/investors/${investorId}`} className="font-medium hover:text-blue-600 hover:underline">
-                                    {investor.name}
-                                  </Link>
+                                  {investorId ? (
+                                    <Link
+                                      href={`/investors/${investorId}`}
+                                      className="font-medium hover:text-blue-600 hover:underline"
+                                    >
+                                      {investor.name}
+                                    </Link>
+                                  ) : (
+                                    <span className="font-medium">{investor.name}</span>
+                                  )}
                                 </div>
                               </td>
                               <td className="py-3 px-4 text-gray-600">{getInvestorProjectName(investor)}</td>
@@ -561,9 +593,11 @@ export default function OwnerDashboard() {
                                 </Badge>
                               </td>
                               <td className="py-3 px-4">
-                                <Link href={`/investors/${investorId}`}>
-                                  <Button variant="ghost" size="sm">View profile</Button>
-                                </Link>
+                                {investorId && (
+                                  <Link href={`/investors/${investorId}`}>
+                                    <Button variant="ghost" size="sm">View profile</Button>
+                                  </Link>
+                                )}
                               </td>
                             </tr>
                           );

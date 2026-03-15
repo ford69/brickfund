@@ -220,6 +220,7 @@ export default function AdminMarketplaceList() {
                       <TableHead>Name</TableHead>
                       <TableHead>Category</TableHead>
                       <TableHead>Price</TableHead>
+                      <TableHead>Stock</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
@@ -248,12 +249,43 @@ export default function AdminMarketplaceList() {
                           {formatCurrency(item.price, item.currency)}
                         </TableCell>
                         <TableCell>
+                          {(() => {
+                            const stock = (item as any).stock as number | undefined;
+                            const lowStockThreshold = (item as any).lowStockThreshold as number | undefined;
+                            if (typeof stock !== 'number') {
+                              return <span className="text-sm text-gray-500">—</span>;
+                            }
+                            const threshold = typeof lowStockThreshold === 'number' ? lowStockThreshold : 5;
+                            if (stock === 0) {
+                              return (
+                                <span className="inline-flex items-center rounded-full bg-red-50 px-3 py-1 text-xs font-medium text-red-700">
+                                  Out of stock
+                                </span>
+                              );
+                            }
+                            if (stock <= threshold) {
+                              return (
+                                <span className="inline-flex items-center rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
+                                  Low stock ({stock})
+                                </span>
+                              );
+                            }
+                            return <span className="text-sm text-gray-900">{stock}</span>;
+                          })()}
+                        </TableCell>
+                        <TableCell>
                           <Badge className={item.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
                             {item.isActive ? 'Active' : 'Inactive'}
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <div className="flex space-x-2">
+                          <div className="flex flex-wrap gap-2">
+                            <Link href={`/marketplace/${item._id}`} target="_blank">
+                              <Button variant="outline" size="sm">
+                                <Store className="h-4 w-4 mr-1" />
+                                View
+                              </Button>
+                            </Link>
                             <Link href={`/admin/marketplace/edit/${item._id}`}>
                               <Button variant="ghost" size="sm">
                                 <Edit className="h-4 w-4" />

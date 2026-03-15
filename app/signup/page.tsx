@@ -1,22 +1,28 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Building2, Mail, Lock, Eye, EyeOff, User, Phone, Briefcase, TrendingUp } from 'lucide-react';
+import { Building2, Mail, Lock, Eye, EyeOff, User, Phone, Briefcase, TrendingUp, ShoppingCart } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getOAuthRedirectUrl } from '@/lib/api';
 
+type AccountRole = 'customer' | 'investor' | 'owner';
+
 export default function SignUp() {
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get('redirect') || '';
+  const isPurchaseFlow = searchParams.get('reason') === 'purchase' || redirectTo.includes('checkout') || (redirectTo.startsWith('/marketplace/') && redirectTo !== '/marketplace' && redirectTo !== '/marketplace/');
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [userType, setUserType] = useState<'investor' | 'owner'>('investor');
+  const [userType, setUserType] = useState<AccountRole>('customer');
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -26,7 +32,7 @@ export default function SignUp() {
     confirmPassword: '',
     agreeToTerms: false,
     companyName: '',
-    role: 'investor'
+    role: 'customer' as AccountRole
   });
 
   const { register } = useAuth();
@@ -60,11 +66,16 @@ export default function SignUp() {
         role: userType,
         companyName: userType === 'owner' ? formData.companyName : undefined
       });
-      
-      // Redirect based on user type
+
+      // Redirect: explicit redirect param (e.g. checkout or product page) takes precedence
+      if (redirectTo && redirectTo.startsWith('/')) {
+        router.push(redirectTo);
+        return;
+      }
       if (userType === 'owner') {
-        // New developers: start with KYC / business verification
         router.push('/profile?tab=kyc&onboarding=owner');
+      } else if (userType === 'customer') {
+        router.push('/marketplace');
       } else {
         router.push('/dashboard');
       }
@@ -75,7 +86,7 @@ export default function SignUp() {
     }
   };
 
-  const handleUserTypeChange = (type: 'investor' | 'owner') => {
+  const handleUserTypeChange = (type: AccountRole) => {
     setUserType(type);
     setFormData(prev => ({
       ...prev,
@@ -110,7 +121,7 @@ export default function SignUp() {
           <h2 className="text-3xl font-bold text-white drop-shadow-sm">Create your account</h2>
           <p className="mt-2 text-sm text-white/90">
             Or{' '}
-            <Link href="/signin" className="font-medium text-primary hover:opacity-90">
+            <Link href={redirectTo ? `/signin?redirect=${encodeURIComponent(redirectTo)}` : '/signin'} className="font-medium text-primary hover:opacity-90">
               sign in to your existing account
             </Link>
           </p>
@@ -120,6 +131,12 @@ export default function SignUp() {
         <Card className="shadow-2xl bg-card/95 backdrop-blur-sm border-border">
           <CardHeader>
             <CardTitle>Join BrickFund today</CardTitle>
+            {isPurchaseFlow && (
+              <p className="text-sm text-muted-foreground mt-2 flex items-center gap-2">
+                <ShoppingCart className="h-4 w-4 text-primary" />
+                Create an account to continue your purchase.
+              </p>
+            )}
           </CardHeader>
           <CardContent>
             {error && (
@@ -128,57 +145,67 @@ export default function SignUp() {
               </div>
             )}
             
-            {/* User Type Toggle */}
+            {/* Account Type Selection */}
             <div className="mb-6">
-              <Label className="text-base font-medium text-gray-900 mb-4 block">I want to register as:</Label>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => handleUserTypeChange('investor')}
-                  className={`p-4 border-2 rounded-lg text-left transition-all duration-200 ${
-                    userType === 'investor'
-                      ? 'border-blue-500 bg-blue-50 text-blue-700'
-                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className={`p-2 rounded-lg ${
-                      userType === 'investor' ? 'bg-blue-100' : 'bg-gray-100'
-                    }`}>
-                      <TrendingUp className={`h-5 w-5 ${
-                        userType === 'investor' ? 'text-blue-600' : 'text-gray-600'
-                      }`} />
+              <Label className="text-base font-medium text-gray-900 mb-4 block">Account type</Label>
+              <div className="space-y-3">
+                <label className="flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                  <input
+                    type="radio"
+                    name="accountType"
+                    value="customer"
+                    checked={userType === 'customer'}
+                    onChange={() => handleUserTypeChange('customer')}
+                    className="mt-1 h-4 w-4 text-primary border-gray-300 focus:ring-primary"
+                  />
+                  <div className="flex items-center space-x-3 flex-1">
+                    <div className={`p-2 rounded-lg ${userType === 'customer' ? 'bg-primary/10' : 'bg-gray-100'}`}>
+                      <ShoppingCart className={`h-5 w-5 ${userType === 'customer' ? 'text-primary' : 'text-gray-600'}`} />
                     </div>
                     <div>
-                      <h3 className="font-medium">Investor</h3>
-                      <p className="text-sm opacity-75">Invest in real estate projects</p>
+                      <h3 className="font-medium text-gray-900">Customer</h3>
+                      <p className="text-sm text-muted-foreground">Purchase items in the marketplace</p>
                     </div>
                   </div>
-                </button>
-                
-                <button
-                  type="button"
-                  onClick={() => handleUserTypeChange('owner')}
-                  className={`p-4 border-2 rounded-lg text-left transition-all duration-200 ${
-                    userType === 'owner'
-                      ? 'border-blue-500 bg-blue-50 text-blue-700'
-                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className={`p-2 rounded-lg ${
-                      userType === 'owner' ? 'bg-blue-100' : 'bg-gray-100'
-                    }`}>
-                      <Briefcase className={`h-5 w-5 ${
-                        userType === 'owner' ? 'text-blue-600' : 'text-gray-600'
-                      }`} />
+                </label>
+                <label className="flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                  <input
+                    type="radio"
+                    name="accountType"
+                    value="investor"
+                    checked={userType === 'investor'}
+                    onChange={() => handleUserTypeChange('investor')}
+                    className="mt-1 h-4 w-4 text-primary border-gray-300 focus:ring-primary"
+                  />
+                  <div className="flex items-center space-x-3 flex-1">
+                    <div className={`p-2 rounded-lg ${userType === 'investor' ? 'bg-primary/10' : 'bg-gray-100'}`}>
+                      <TrendingUp className={`h-5 w-5 ${userType === 'investor' ? 'text-primary' : 'text-gray-600'}`} />
                     </div>
                     <div>
-                      <h3 className="font-medium">Real Estate Developer</h3>
-                      <p className="text-sm opacity-75">List and manage real estate projects</p>
+                      <h3 className="font-medium text-gray-900">Investor</h3>
+                      <p className="text-sm text-muted-foreground">Invest in projects</p>
                     </div>
                   </div>
-                </button>
+                </label>
+                <label className="flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                  <input
+                    type="radio"
+                    name="accountType"
+                    value="owner"
+                    checked={userType === 'owner'}
+                    onChange={() => handleUserTypeChange('owner')}
+                    className="mt-1 h-4 w-4 text-primary border-gray-300 focus:ring-primary"
+                  />
+                  <div className="flex items-center space-x-3 flex-1">
+                    <div className={`p-2 rounded-lg ${userType === 'owner' ? 'bg-primary/10' : 'bg-gray-100'}`}>
+                      <Briefcase className={`h-5 w-5 ${userType === 'owner' ? 'text-primary' : 'text-gray-600'}`} />
+                    </div>
+                    <div>
+                      <h3 className="font-medium text-gray-900">Project owner</h3>
+                      <p className="text-sm text-muted-foreground">Create and manage projects</p>
+                    </div>
+                  </div>
+                </label>
               </div>
             </div>
 
@@ -366,7 +393,8 @@ export default function SignUp() {
                   variant="outline"
                   className="w-full"
                   onClick={() => {
-                    window.location.href = getOAuthRedirectUrl('google', '/dashboard');
+                    const returnUrl = redirectTo && redirectTo.startsWith('/') ? redirectTo : (userType === 'customer' ? '/marketplace' : userType === 'owner' ? '/owner-dashboard' : '/dashboard');
+                    window.location.href = getOAuthRedirectUrl('google', returnUrl);
                   }}
                 >
                   <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
@@ -382,7 +410,8 @@ export default function SignUp() {
                   variant="outline"
                   className="w-full"
                   onClick={() => {
-                    window.location.href = getOAuthRedirectUrl('facebook', '/dashboard');
+                    const returnUrl = redirectTo && redirectTo.startsWith('/') ? redirectTo : (userType === 'customer' ? '/marketplace' : userType === 'owner' ? '/owner-dashboard' : '/dashboard');
+                    window.location.href = getOAuthRedirectUrl('facebook', returnUrl);
                   }}
                 >
                   <svg className="w-5 h-5 mr-2" fill="#1877F2" viewBox="0 0 24 24">

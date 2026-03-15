@@ -56,6 +56,10 @@ export default function Dashboard() {
       router.replace('/owner-dashboard');
       return;
     }
+    if (user.role === 'customer') {
+      router.replace('/marketplace');
+      return;
+    }
     setRoleChecked(true);
   }, [user, authLoading, router]);
 

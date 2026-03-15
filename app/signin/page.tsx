@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,6 +12,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getOAuthRedirectUrl } from '@/lib/api';
 
 export default function SignIn() {
+  const searchParams = useSearchParams();
+  const redirectParam = searchParams.get('redirect') || '';
+  const signupLink = redirectParam && redirectParam.startsWith('/') ? `/signup?redirect=${encodeURIComponent(redirectParam)}` : '/signup';
+
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -37,6 +41,8 @@ export default function SignIn() {
         router.push('/admin');
       } else if (loggedInUser?.role === 'owner') {
         router.push('/owner-dashboard');
+      } else if (loggedInUser?.role === 'customer') {
+        router.push('/marketplace');
       } else {
         router.push('/dashboard');
       }
@@ -76,7 +82,7 @@ export default function SignIn() {
           </h2>
           <p className="mt-2 text-sm text-white/90">
             Or{' '}
-            <Link href="/signup" className="font-medium text-primary hover:opacity-90">
+            <Link href={signupLink} className="font-medium text-primary hover:opacity-90">
               create a new account
             </Link>
           </p>

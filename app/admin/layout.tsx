@@ -18,6 +18,7 @@ import {
   Store,
   BarChart3,
   Activity,
+  Package,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -27,7 +28,8 @@ const sidebarItems: Array<{ id: string; label: string; icon: React.ComponentType
   { id: 'projects', label: 'Projects', icon: Building2, href: '/admin?tab=projects' },
   { id: 'approvals', label: 'Approvals', icon: CheckCircle, href: '/admin?tab=approvals' },
   { id: 'kyc', label: 'KYC Review', icon: FileText, href: '/admin?tab=kyc' },
-  { id: 'marketplace', label: 'Marketplace', icon: Store, href: '/admin/marketplace' },
+  { id: 'inventory', label: 'Inventory', icon: Store, href: '/admin/marketplace' },
+  { id: 'fulfillment', label: 'Fulfillment Settings', icon: Package, href: '/admin/fulfillment' },
   { id: 'stats', label: 'Statistics', icon: BarChart3, href: '/admin?tab=stats' },
   { id: 'activity', label: 'Activity', icon: Activity, href: '/admin?tab=activity' },
 ];
@@ -70,6 +72,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   const isMarketplace = pathname.startsWith('/admin/marketplace');
+  const isFulfillment = pathname.startsWith('/admin/fulfillment');
   const isProjectReview = pathname.startsWith('/admin/projects/');
   const isAdminRoot = pathname === '/admin';
 
@@ -86,7 +89,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* Sidebar - full height, scrollable nav */}
       <aside
-        className={`fixed lg:relative z-50 flex flex-col h-screen flex-shrink-0 border-r border-slate-200 bg-slate-900 text-white transition-[width] duration-300 ease-in-out ${
+        className={`fixed lg:relative z-50 flex flex-col min-h-screen flex-shrink-0 border-r border-slate-200 bg-slate-900 text-white transition-[width] duration-300 ease-in-out ${
           sidebarOpen ? 'w-64 translate-x-0' : 'w-20 -translate-x-full lg:translate-x-0 lg:w-20'
         } ${mobileMenuOpen ? 'translate-x-0 w-64' : ''}`}
       >
@@ -205,7 +208,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </Button>
             <div>
               <h1 className="text-lg font-semibold text-slate-900">
-                {isProjectReview ? 'Review Project' : isMarketplace ? 'Marketplace' : 'Admin Dashboard'}
+                {isProjectReview ? 'Review Project' : isMarketplace ? 'Marketplace' : isFulfillment ? 'Fulfillment Settings' : 'Admin Dashboard'}
               </h1>
               <p className="text-xs text-slate-500 hidden sm:block">BrickFund Admin</p>
             </div>

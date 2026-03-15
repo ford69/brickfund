@@ -87,6 +87,7 @@ export default function SubscriptionsPage() {
   const [currentSubscription, setCurrentSubscription] = useState<UserSubscription | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [processingTier, setProcessingTier] = useState<SubscriptionPlan['tier'] | null>(null);
+  const [hasUsedStarter, setHasUsedStarter] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -99,6 +100,11 @@ export default function SubscriptionsPage() {
         const response = await apiClient.getUserSubscription();
         if (response.success && response.data) {
           setCurrentSubscription(response.data);
+          // If user has ever had the starter tier (trial or otherwise), mark it as used
+          const sub = response.data;
+          if (sub.tier === 'starter') {
+            setHasUsedStarter(true);
+          }
         }
       } catch (error) {
         console.error('Failed to fetch subscription:', error);
@@ -113,6 +119,18 @@ export default function SubscriptionsPage() {
   const handleSubscribe = async (plan: SubscriptionPlan) => {
     if (!isAuthenticated) {
       router.push('/signin?redirect=/subscriptions');
+      return;
+    }
+
+    // Enforce: Starter (free) tier is one-time only.
+    // If the user has already used the starter trial or currently has/previously had starter,
+    // do not allow subscribing to it again.
+    if (plan.tier === 'starter' && hasUsedStarter) {
+      toast({
+        title: 'Free trial not available',
+        description: 'The Starter free trial is a one-time offer and cannot be activated again.',
+        variant: 'destructive',
+      });
       return;
     }
 
