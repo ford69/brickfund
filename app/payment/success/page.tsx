@@ -4,16 +4,24 @@ import React, { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { apiClient } from '@/lib/api';
+import { useCart } from '@/contexts/CartContext';
 
 const PaymentSuccessPage: React.FC = () => {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { clearCart } = useCart();
   const [loading, setLoading] = useState(true);
   const [payment, setPayment] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const reference = searchParams.get('reference');
   const paymentId = searchParams.get('paymentId');
+  // Backend adds these so we can show the right actions (investment vs marketplace)
+  const source = searchParams.get('source'); // 'investment' | 'marketplace'
+  const role = searchParams.get('role'); // 'investor' | 'customer'
+  const orderId = searchParams.get('orderId');
+  const projectId = searchParams.get('projectId');
+  const investmentId = searchParams.get('investmentId');
 
   useEffect(() => {
     if (reference && paymentId) {
@@ -25,6 +33,13 @@ const PaymentSuccessPage: React.FC = () => {
       setLoading(false);
     }
   }, [reference, paymentId]);
+
+  // After a successful marketplace payment, clear the cart so purchased items are no longer in it
+  useEffect(() => {
+    if (!loading && !error && source === 'marketplace') {
+      clearCart();
+    }
+  }, [loading, error, source, clearCart]);
 
   const verifyPayment = async (ref: string, _pId: string) => {
     try {
@@ -71,10 +86,14 @@ const PaymentSuccessPage: React.FC = () => {
             <h2 className="mt-4 text-xl font-bold text-foreground">Payment Verification Failed</h2>
             <p className="mt-2 text-muted-foreground text-sm">{error}</p>
             <Button
-              onClick={() => router.push('/projects')}
+              onClick={() =>
+                source === 'marketplace'
+                  ? router.push('/marketplace')
+                  : router.push('/projects')
+              }
               className="mt-6 bg-primary hover:opacity-90 text-primary-foreground rounded-xl px-6 h-11"
             >
-              Back to Projects
+              {source === 'marketplace' ? 'Back to Marketplace' : 'Back to Projects'}
             </Button>
           </div>
         </div>
@@ -103,7 +122,11 @@ const PaymentSuccessPage: React.FC = () => {
 
           <h2 className="mt-4 text-2xl font-bold text-foreground tracking-tight">Payment Successful!</h2>
           <p className="mt-2 text-muted-foreground text-sm">
-            {payment?.purchase
+            {source === 'marketplace'
+              ? 'Your marketplace purchase has been confirmed.'
+              : source === 'investment'
+              ? 'Your investment has been confirmed.'
+              : payment?.purchase
               ? 'Your marketplace purchase has been confirmed.'
               : 'Your investment has been confirmed.'}
           </p>
@@ -146,48 +169,83 @@ const PaymentSuccessPage: React.FC = () => {
           )}
 
           <div className="mt-6 space-y-3">
-            {payment?.purchase ? (
-              <>
-                <p className="text-sm text-muted-foreground mb-2">What would you like to do next?</p>
-                <Button
-                  onClick={() => router.push('/marketplace')}
-                  className="w-full bg-primary hover:opacity-90 text-primary-foreground rounded-xl h-11 font-medium"
-                >
-                  Continue shopping
-                </Button>
-                <Button
-                  onClick={() => router.push('/owner-dashboard')}
-                  variant="outline"
-                  className="w-full rounded-xl border-border hover:bg-accent h-11"
-                >
-                  Return to dashboard
-                </Button>
-                <a
-                  href="/marketplace/purchases"
-                  className="block text-center text-sm text-primary hover:opacity-90 mt-3 font-medium"
-                >
-                  View purchase history
-                </a>
-              </>
-            ) : (
-              <>
-                {paymentData?.projectId && (
+            {(() => {
+              const isMarketplace =
+                source === 'marketplace' || (source !== 'investment' && !!payment?.purchase);
+              const isInvestment =
+                source === 'investment' || (source !== 'marketplace' && !!payment?.investment);
+
+              if (isMarketplace) {
+                return (
+                  <>
+                    <p className="text-sm text-muted-foreground mb-2">What would you like to do next?</p>
+                    {orderId ? (
+                      <Button
+                        onClick={() => router.push(`/marketplace/orders/${orderId}`)}
+                        className="w-full bg-primary hover:opacity-90 text-primary-foreground rounded-xl h-11 font-medium"
+                      >
+                        Track order
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={() => router.push('/marketplace')}
+                        className="w-full bg-primary hover:opacity-90 text-primary-foreground rounded-xl h-11 font-medium"
+                      >
+                        Continue shopping
+                      </Button>
+                    )}
+                    <Button
+                      onClick={() => router.push('/marketplace/purchases')}
+                      variant="outline"
+                      className="w-full rounded-xl border-border hover:bg-accent h-11"
+                    >
+                      My orders
+                    </Button>
+                    <Button
+                      onClick={() => router.push('/owner-dashboard')}
+                      variant="ghost"
+                      className="w-full rounded-xl h-11 text-muted-foreground"
+                    >
+                      Return to dashboard
+                    </Button>
+                  </>
+                );
+              }
+
+              if (isInvestment) {
+                const pid = projectId || paymentData?.projectId;
+                return (
+                  <>
+                    {pid ? (
+                      <Button
+                        onClick={() => router.push(`/projects/${pid}`)}
+                        className="w-full bg-primary hover:opacity-90 text-primary-foreground rounded-xl h-11 font-medium"
+                      >
+                        View project
+                      </Button>
+                    ) : null}
+                    <Button
+                      onClick={() => router.push('/investments')}
+                      variant={pid ? 'outline' : 'default'}
+                      className="w-full rounded-xl border-border hover:bg-accent h-11 font-medium"
+                    >
+                      {role === 'investor' ? 'Back to my investments' : 'My investments'}
+                    </Button>
+                  </>
+                );
+              }
+
+              return (
+                <>
                   <Button
-                    onClick={() => router.push(`/projects/${paymentData.projectId}`)}
+                    onClick={() => router.push('/projects')}
                     className="w-full bg-primary hover:opacity-90 text-primary-foreground rounded-xl h-11 font-medium"
                   >
-                    View Project
+                    Back to projects
                   </Button>
-                )}
-                <Button
-                  onClick={() => router.push('/investments')}
-                  variant="outline"
-                  className="w-full rounded-xl border-border hover:bg-accent h-11"
-                >
-                  My Investments
-                </Button>
-              </>
-            )}
+                </>
+              );
+            })()}
           </div>
         </div>
       </div>

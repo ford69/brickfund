@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { Building2, Mail, Phone, MapPin, Twitter, Linkedin, Facebook } from 'lucide-react';
+import Image from 'next/image';
+import { Mail, Phone, MapPin, Twitter, Linkedin, Facebook } from 'lucide-react';
 
 export default function Footer() {
   return (
@@ -7,9 +8,14 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12 mb-10 lg:mb-12">
           <div className="sm:col-span-2 lg:col-span-1">
-            <Link href="/" className="inline-flex items-center gap-2 mb-6">
-              <Building2 className="h-8 w-8 text-primary" />
-              <span className="text-xl font-bold tracking-tight">BrickFund</span>
+            <Link href="/" className="inline-flex items-center mb-6" aria-label="BrickFund Home">
+              <Image
+                src="/images/logo.png"
+                alt="BrickFund"
+                width={160}
+                height={160}
+                className="h-28 w-28 sm:h-32 sm:w-32 md:h-36 md:w-36 object-contain"
+              />
             </Link>
             <p className="text-background/70 text-sm sm:text-base leading-relaxed max-w-sm mb-6">
               Democratizing real estate investment through crowdfunding. Building wealth, brick by
@@ -107,11 +113,11 @@ export default function Footer() {
             </h3>
             <div className="space-y-4 text-sm text-background/70">
               <a
-                href="mailto:Emmagus12@gmail.com"
+                href="mailto:brickfundglobal@gmail.com"
                 className="flex items-center gap-3 hover:text-background transition-colors"
               >
                 <Mail className="h-5 w-5 shrink-0 text-primary" />
-                <span>Emmagus12@gmail.com</span>
+                <span>brickfundglobal@gmail.com</span>
               </a>
               <a
                 href="tel:+233598321546"

@@ -224,7 +224,7 @@ export default function HowItWorks() {
                   <Button
                     size="lg"
                     variant="outline"
-                    className="border-2 border-background/50 text-background font-semibold py-5 sm:py-6 px-8 sm:px-10 text-base sm:text-lg hover:bg-background hover:text-foreground transition-all rounded-xl"
+                    className="border-2 border-background/60 !bg-transparent text-background shadow-none font-semibold py-5 sm:py-6 px-8 sm:px-10 text-base sm:text-lg hover:!bg-background hover:text-foreground transition-all rounded-xl"
                   >
                     Learn More
                   </Button>

@@ -68,7 +68,7 @@ export default function SignIn() {
         style={{ backgroundImage: "url('/images/accra-1.jpg')" }}
         aria-hidden
       />
-      <div className="absolute inset-0 bg-black/60" aria-hidden />
+      <div className="absolute inset-0 bg-brand-blue-950/60" aria-hidden />
       <div className="relative z-10 max-w-md w-full space-y-6 sm:space-y-8">
         <div className="text-center">
           <Link href="/" className="inline-flex items-center gap-2 mb-6">

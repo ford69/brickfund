@@ -81,7 +81,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Mobile overlay */}
       {mobileMenuOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          className="fixed inset-0 bg-brand-blue-950/50 z-40 lg:hidden"
           onClick={() => setMobileMenuOpen(false)}
           aria-hidden
         />
@@ -89,24 +89,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* Sidebar - full height, scrollable nav */}
       <aside
-        className={`fixed lg:relative z-50 flex flex-col min-h-screen flex-shrink-0 border-r border-slate-200 bg-slate-900 text-white transition-[width] duration-300 ease-in-out ${
+        className={`fixed lg:relative z-50 flex flex-col min-h-screen flex-shrink-0 border-r border-white/10 bg-primary text-primary-foreground transition-[width] duration-300 ease-in-out ${
           sidebarOpen ? 'w-64 translate-x-0' : 'w-20 -translate-x-full lg:translate-x-0 lg:w-20'
         } ${mobileMenuOpen ? 'translate-x-0 w-64' : ''}`}
       >
         <div className="flex h-full flex-col min-h-0">
           {/* Sidebar header */}
-          <div className="flex h-16 items-center justify-between gap-2 border-b border-slate-700 px-4 flex-shrink-0">
+          <div className="flex h-16 items-center justify-between gap-2 border-b border-white/15 px-4 flex-shrink-0">
             {sidebarOpen && (
               <>
                 <div className="flex items-center gap-2 min-w-0">
-                  <Shield className="h-6 w-6 text-blue-400 flex-shrink-0" />
+                  <Shield className="h-6 w-6 text-primary-foreground/90 flex-shrink-0" />
                   <span className="font-semibold truncate">Admin Portal</span>
                 </div>
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={() => setSidebarOpen(false)}
-                  className="flex-shrink-0 text-slate-300 hover:text-white hover:bg-slate-700 lg:flex hidden"
+                  className="flex-shrink-0 text-primary-foreground/80 hover:text-primary-foreground hover:bg-white/10 lg:flex hidden"
                   aria-label="Collapse sidebar"
                 >
                   <ChevronLeft className="h-5 w-5" />
@@ -119,7 +119,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   variant="ghost"
                   size="icon"
                   onClick={() => setSidebarOpen(true)}
-                  className="text-slate-300 hover:text-white hover:bg-slate-700 lg:flex hidden"
+                  className="text-primary-foreground/80 hover:text-primary-foreground hover:bg-white/10 lg:flex hidden"
                   aria-label="Expand sidebar"
                 >
                   <ChevronRight className="h-5 w-5" />
@@ -130,7 +130,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               variant="ghost"
               size="icon"
               onClick={() => setMobileMenuOpen(false)}
-              className="lg:hidden text-slate-300 hover:text-white"
+              className="lg:hidden text-primary-foreground/80 hover:text-primary-foreground"
               aria-label="Close menu"
             >
               <ChevronLeft className="h-5 w-5" />
@@ -151,7 +151,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   href={item.href}
                   onClick={() => setMobileMenuOpen(false)}
                   className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                    isActive ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                    isActive
+                      ? 'bg-white/20 text-primary-foreground shadow-sm'
+                      : 'text-primary-foreground/75 hover:bg-white/10 hover:text-primary-foreground'
                   } ${!showLabel ? 'justify-center' : ''}`}
                   title={!showLabel ? item.label : undefined}
                 >
@@ -163,15 +165,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </nav>
 
           {/* Footer - Back to Site */}
-          <div className="border-t border-slate-700 p-3 flex-shrink-0">
+          <div className="border-t border-white/15 p-3 flex-shrink-0">
             <Link href="/" className="block" onClick={() => setMobileMenuOpen(false)}>
               <Button
                 variant="ghost"
                 className={`w-full ${sidebarOpen ? 'justify-start gap-3' : 'justify-center px-0'}`}
                 title={!sidebarOpen ? 'Back to Site' : undefined}
               >
-                <Building2 className="h-5 w-5 flex-shrink-0 text-slate-400" />
-                {sidebarOpen && <span className="truncate text-slate-400">Back to Site</span>}
+                <Building2 className="h-5 w-5 flex-shrink-0 text-primary-foreground/65" />
+                {sidebarOpen && <span className="truncate text-primary-foreground/65">Back to Site</span>}
               </Button>
             </Link>
           </div>

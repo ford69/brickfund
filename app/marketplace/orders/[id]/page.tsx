@@ -16,19 +16,12 @@ import {
   Calendar,
   ExternalLink,
   Receipt,
+  Store,
 } from 'lucide-react';
 import { apiClient, MarketplacePurchase, type OrderStatus } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import Header from '@/components/Header';
-
-const STEPS: { key: OrderStatus; label: string; icon: typeof Package }[] = [
-  { key: 'pending', label: 'Order placed', icon: Receipt },
-  { key: 'paid', label: 'Payment confirmed', icon: CheckCircle2 },
-  { key: 'processing', label: 'Processing', icon: Package },
-  { key: 'shipped', label: 'Shipped', icon: Truck },
-  { key: 'delivered', label: 'Delivered', icon: CheckCircle2 },
-];
 
 const stepOrder: OrderStatus[] = ['pending', 'paid', 'processing', 'shipped', 'out_for_delivery', 'delivered'];
 
@@ -139,6 +132,23 @@ export default function OrderTrackingPage() {
   const currentStatus = (order.orderStatus || order.status) as string;
   const currentStepIndex = getStepIndex(currentStatus === 'completed' ? 'delivered' : currentStatus);
   const itemName = order.item && typeof order.item === 'object' ? order.item.name : 'Order items';
+  const isPickup = order.fulfillmentMethod === 'pickup';
+
+  const steps: { key: OrderStatus; label: string; icon: typeof Package }[] = isPickup
+    ? [
+        { key: 'pending', label: 'Order placed', icon: Receipt },
+        { key: 'paid', label: 'Payment confirmed', icon: CheckCircle2 },
+        { key: 'processing', label: 'Preparing for pickup', icon: Package },
+        { key: 'shipped', label: 'Ready for pickup', icon: Store },
+        { key: 'delivered', label: 'Picked up', icon: CheckCircle2 },
+      ]
+    : [
+        { key: 'pending', label: 'Order placed', icon: Receipt },
+        { key: 'paid', label: 'Payment confirmed', icon: CheckCircle2 },
+        { key: 'processing', label: 'Processing', icon: Package },
+        { key: 'shipped', label: 'Shipped', icon: Truck },
+        { key: 'delivered', label: 'Delivered', icon: CheckCircle2 },
+      ];
 
   return (
     <div className="min-h-screen bg-background">
@@ -155,7 +165,12 @@ export default function OrderTrackingPage() {
 
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-foreground">Order #{order._id.slice(-8).toUpperCase()}</h1>
-          <p className="text-muted-foreground mt-1">Placed on {formatDateTime(order.createdAt)}</p>
+          <p className="text-muted-foreground mt-1">
+            Placed on {formatDateTime(order.createdAt)}{' '}
+            <span className="inline-block text-xs">
+              • Last updated {formatDateTime(order.updatedAt)}
+            </span>
+          </p>
         </div>
 
         {/* Status timeline */}
@@ -168,7 +183,7 @@ export default function OrderTrackingPage() {
           </CardHeader>
           <CardContent className="pt-0">
             <div className="relative">
-              {STEPS.map((step, index) => {
+              {steps.map((step, index) => {
                 const isDone = index <= currentStepIndex;
                 const isCurrent = index === currentStepIndex;
                 const Icon = step.icon;
@@ -182,7 +197,7 @@ export default function OrderTrackingPage() {
                       >
                         {isDone ? <CheckCircle2 className="h-5 w-5" /> : <Icon className="h-5 w-5 text-muted-foreground" />}
                       </div>
-                      {index < STEPS.length - 1 && (
+                      {index < steps.length - 1 && (
                         <div className={`w-0.5 flex-1 min-h-[24px] mt-1 ${isDone ? 'bg-primary' : 'bg-border'}`} />
                       )}
                     </div>
@@ -190,6 +205,11 @@ export default function OrderTrackingPage() {
                       <p className={`font-medium ${isCurrent ? 'text-foreground' : 'text-muted-foreground'}`}>
                         {step.label}
                       </p>
+                      {index === 0 && order.createdAt && (
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {formatDateTime(order.createdAt)}
+                        </p>
+                      )}
                       {step.key === 'delivered' && order.deliveredAt && (
                         <p className="text-xs text-muted-foreground mt-0.5">
                           {formatDateTime(order.deliveredAt)}
@@ -203,12 +223,12 @@ export default function OrderTrackingPage() {
           </CardContent>
         </Card>
 
-        {/* Delivery & tracking */}
+        {/* Delivery / pickup & tracking */}
         <Card className="mb-8 border border-border rounded-2xl overflow-hidden">
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
               <Calendar className="h-4 w-4 text-muted-foreground" />
-              Delivery &amp; tracking
+              {isPickup ? 'Pickup details' : 'Delivery & tracking'}
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0 space-y-4">

@@ -413,7 +413,7 @@ export default function AdminMarketplaceCreate() {
                     {formData.images.map((url, index) => (
                       <div key={`${url}-${index}`} className="relative w-24 h-24 rounded-lg border border-gray-200 overflow-hidden bg-gray-50 group">
                         <img src={url} alt="" className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1 transition-opacity">
+                        <div className="absolute inset-0 bg-brand-blue-950/50 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1 transition-opacity">
                           {index > 0 && (
                             <Button
                               type="button"
@@ -438,7 +438,7 @@ export default function AdminMarketplaceCreate() {
                           </Button>
                         </div>
                         {index === 0 && (
-                          <span className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs text-center py-0.5">Primary</span>
+                          <span className="absolute bottom-0 left-0 right-0 bg-brand-blue-950/75 text-primary-foreground text-xs text-center py-0.5">Primary</span>
                         )}
                       </div>
                     ))}

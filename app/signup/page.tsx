@@ -110,7 +110,7 @@ export default function SignUp() {
         style={{ backgroundImage: "url('/images/building-and-contruction-1.jpg')" }}
         aria-hidden
       />
-      <div className="absolute inset-0 bg-black/60" aria-hidden />
+      <div className="absolute inset-0 bg-brand-blue-950/60" aria-hidden />
       <div className="relative z-10 max-w-md w-full space-y-8">
         {/* Header */}
         <div className="text-center">

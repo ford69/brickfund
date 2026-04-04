@@ -34,24 +34,28 @@ export default function Header() {
   };
 
   const navLinkClass =
-    'font-medium text-sm text-white/90 hover:text-white transition-colors duration-200';
+    'font-medium text-sm text-foreground/90 hover:text-primary transition-colors duration-200';
 
   return (
     <motion.header
-      className="sticky top-0 z-50 bg-black border-b border-white/10 transition-all duration-300"
+      className="sticky top-0 z-50 bg-white border-b border-border transition-all duration-300 overflow-visible shadow-sm"
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-14 sm:h-16">
-          <Link href="/" className="flex items-center shrink-0" aria-label="BrickFund Home">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 overflow-visible">
+        <div className="flex justify-between items-center h-14 sm:h-16 overflow-visible">
+          <Link
+            href="/"
+            className="relative flex items-center justify-center shrink-0 overflow-visible"
+            aria-label="BrickFund Home"
+          >
             <Image
-              src="/images/brickfund.png"
+              src="/images/logo.png"
               alt="BrickFund"
-              width={64}
-              height={64}
-              className="h-12 w-12 sm:h-14 sm:w-14 md:h-16 md:w-16 object-contain"
+              width={128}
+              height={128}
+              className="h-[4.25rem] w-[4.25rem] sm:h-20 sm:w-20 md:h-28 md:w-28 object-contain"
               priority
             />
           </Link>
@@ -79,13 +83,13 @@ export default function Header() {
 
           <div className="hidden md:flex items-center gap-3">
             <Link
-              href="/checkout"
-              className="relative flex items-center justify-center w-9 h-9 rounded-lg text-white/90 hover:bg-white/10 hover:text-white transition-colors"
+              href="/cart"
+              className="relative flex items-center justify-center w-9 h-9 rounded-lg text-primary hover:text-blue-800 hover:bg-primary/10 transition-colors"
               aria-label={`Cart${itemCount > 0 ? `, ${itemCount} items` : ''}`}
             >
               <ShoppingCart className="h-5 w-5" />
               {itemCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 min-w-[1.25rem] h-5 px-1 flex items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                <span className="absolute -top-0.5 -right-0.5 min-w-[1.25rem] h-5 px-1 flex items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground shadow-sm">
                   {itemCount > 99 ? '99+' : itemCount}
                 </span>
               )}
@@ -95,20 +99,20 @@ export default function Header() {
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="flex items-center gap-2 h-9 px-3 rounded-lg text-white/90 hover:bg-white/10 hover:text-white transition-colors"
+                    className="group flex items-center gap-2 h-9 px-3 rounded-lg text-foreground hover:bg-primary/10 hover:text-foreground"
                   >
-                    <Avatar className="w-8 h-8 rounded-full shrink-0 border border-white/20">
+                    <Avatar className="w-8 h-8 rounded-full shrink-0 border border-border">
                       <AvatarImage src={user?.avatarUrl} alt="" />
-                      <AvatarFallback className="bg-white/20 text-white text-xs font-medium">
+                      <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
                         {user?.firstName?.[0] && user?.lastName?.[0]
                           ? `${user.firstName[0]}${user.lastName[0]}`
-                          : user?.firstName?.[0] ?? <User className="h-4 w-4" />}
+                          : user?.firstName?.[0] ?? <User className="h-4 w-4 text-primary" />}
                       </AvatarFallback>
                     </Avatar>
                     <span className="font-medium text-sm max-w-[100px] truncate">
                       {user?.firstName}
                     </span>
-                    <ChevronDown className="h-4 w-4 shrink-0 opacity-70" />
+                    <ChevronDown className="h-4 w-4 shrink-0 text-primary group-hover:text-blue-800 transition-colors" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56 rounded-xl border-border">
@@ -141,25 +145,25 @@ export default function Header() {
                     >
                       {user?.role === 'admin' && (
                         <>
-                          <Shield className="mr-2 h-4 w-4" />
+                          <Shield className="mr-2 h-4 w-4 text-primary shrink-0" />
                           Admin Dashboard
                         </>
                       )}
                       {user?.role === 'owner' && (
                         <>
-                          <Building2 className="mr-2 h-4 w-4" />
+                          <Building2 className="mr-2 h-4 w-4 text-primary shrink-0" />
                           Owner Dashboard
                         </>
                       )}
                       {user?.role === 'investor' && (
                         <>
-                          <User className="mr-2 h-4 w-4" />
+                          <User className="mr-2 h-4 w-4 text-primary shrink-0" />
                           Investor Dashboard
                         </>
                       )}
                       {user?.role === 'customer' && (
                         <>
-                          <Store className="mr-2 h-4 w-4" />
+                          <Store className="mr-2 h-4 w-4 text-primary shrink-0" />
                           Marketplace
                         </>
                       )}
@@ -180,7 +184,7 @@ export default function Header() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-white/90 hover:bg-white/10 hover:text-white"
+                  className="text-foreground hover:text-primary hover:bg-primary/10"
                   onClick={() => openAuthModal('login')}
                 >
                   Sign In
@@ -202,7 +206,7 @@ export default function Header() {
               variant="ghost"
               size="icon"
               onClick={() => setIsOpen(!isOpen)}
-              className="text-white hover:bg-white/10"
+              className="text-primary hover:text-blue-800 hover:bg-primary/10 transition-colors"
               aria-expanded={isOpen}
               aria-label={isOpen ? 'Close menu' : 'Open menu'}
             >
@@ -263,11 +267,11 @@ export default function Header() {
                 Marketplace
               </Link>
               <Link
-                href="/checkout"
-                className="px-3 py-2.5 rounded-lg font-medium text-foreground hover:bg-accent transition-colors flex items-center gap-2"
+                href="/cart"
+                className="px-3 py-2.5 rounded-lg font-medium text-foreground hover:bg-primary/10 hover:text-primary transition-colors flex items-center gap-2"
                 onClick={() => setIsOpen(false)}
               >
-                <ShoppingCart className="h-4 w-4" />
+                <ShoppingCart className="h-4 w-4 text-primary" />
                 Cart{itemCount > 0 ? ` (${itemCount})` : ''}
               </Link>
               <div className="mt-3 pt-3 border-t border-border flex flex-col gap-1">
@@ -308,28 +312,28 @@ export default function Header() {
                       }
                       onClick={() => setIsOpen(false)}
                     >
-                      <Button variant="ghost" className="w-full justify-start rounded-lg">
+                      <Button variant="ghost" className="w-full justify-start rounded-lg text-foreground hover:text-primary">
                         {user?.role === 'admin' && (
                           <>
-                            <Shield className="h-4 w-4 mr-2" />
+                            <Shield className="h-4 w-4 mr-2 text-primary shrink-0" />
                             Admin Dashboard
                           </>
                         )}
                         {user?.role === 'owner' && (
                           <>
-                            <Building2 className="h-4 w-4 mr-2" />
+                            <Building2 className="h-4 w-4 mr-2 text-primary shrink-0" />
                             Owner Dashboard
                           </>
                         )}
                         {user?.role === 'investor' && (
                           <>
-                            <User className="h-4 w-4 mr-2" />
+                            <User className="h-4 w-4 mr-2 text-primary shrink-0" />
                             Investor Dashboard
                           </>
                         )}
                         {user?.role === 'customer' && (
                           <>
-                            <Store className="h-4 w-4 mr-2" />
+                            <Store className="h-4 w-4 mr-2 text-primary shrink-0" />
                             Marketplace
                           </>
                         )}

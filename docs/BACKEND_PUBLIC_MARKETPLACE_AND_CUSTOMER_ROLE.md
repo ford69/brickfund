@@ -134,6 +134,8 @@ The frontend uses a **cart**: users add items (with quantity), then go to **Chec
 
 After the user pays, Paystack will redirect to `successUrl` (with reference in query if applicable). The frontend will clear the cart and show a success message. Backend should verify the payment via your existing Paystack webhook or verify endpoint and record the order (e.g. one order with multiple line items).
 
+**Inventory:** When payment is confirmed and the order is created/completed, the backend must **reduce each marketplace item’s stock** by the ordered quantity for each line item. For example, when recording a cart order with line items `[{ itemId: "A", quantity: 2 }, { itemId: "B", quantity: 1 }]`, decrement item A’s `stock` by 2 and item B’s `stock` by 1 (if the item model has a `stock` field). This keeps inventory in sync so listings show correct availability and overselling is avoided.
+
 ---
 
 ## 7. Fulfillment settings (admin)

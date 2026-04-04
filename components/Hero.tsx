@@ -65,8 +65,8 @@ export default function Hero() {
           }}
         />
         {/* Dark overlay for contrast and readability */}
-        <div className="absolute inset-0 bg-black/55" aria-hidden />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/80" />
+        <div className="absolute inset-0 bg-brand-blue-950/55" aria-hidden />
+        <div className="absolute inset-0 bg-gradient-to-b from-brand-blue-950/70 via-brand-blue-950/50 to-brand-blue-950/80" />
         <div className="absolute inset-0 bg-gradient-to-r from-primary/25 via-transparent to-brand-brown-900/15" />
         <div className="absolute top-20 left-10 w-2 h-2 bg-primary/60 rounded-full blur-sm animate-pulse" />
         <div
@@ -93,7 +93,7 @@ export default function Hero() {
           >
             Building Wealth,{' '}
             <motion.span
-              className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-primary/90 to-brand-brown-300"
+              className="text-transparent bg-clip-text bg-gradient-to-r from-white via-sky-100 to-amber-100 drop-shadow-[0_2px_20px_rgba(0,0,0,0.65)]"
               initial={{ opacity: 0, x: -16 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.5, duration: 0.7 }}
@@ -107,7 +107,7 @@ export default function Hero() {
             variants={itemVariants}
           >
             Democratize real estate investing. Fund verified property projects with as little as
-            $100 and earn returns while developers build the future.
+            ₵100 and earn returns while developers build the future.
           </motion.p>
 
           {/* Search bar */}

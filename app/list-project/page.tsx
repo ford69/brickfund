@@ -841,7 +841,7 @@ export default function ListProject() {
                             >
                               <X className="h-4 w-4" />
                             </Button>
-                            <div className="absolute bottom-2 left-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+                            <div className="absolute bottom-2 left-2 bg-brand-blue-950/55 text-primary-foreground text-xs px-2 py-1 rounded">
                               {image.name}
                             </div>
                           </div>

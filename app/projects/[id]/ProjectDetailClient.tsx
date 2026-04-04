@@ -350,7 +350,7 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
                   <Link href={`/owners/${project.developer._id}`}>
                     <div className="bg-gray-50 p-4 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer flex items-center justify-between group">
                       <div>
-                        <p className="font-medium text-gray-900 group-hover:text-blue-600">
+                        <p className="font-medium text-gray-900 group-hover:text-primary">
                           {project.developer.firstName} {project.developer.lastName}
                         </p>
                         <p className="text-sm text-gray-600">

@@ -1415,6 +1415,44 @@ class ApiClient {
   async getMarketplaceOrder(orderId: string) {
     return this.request<MarketplacePurchase>(`/marketplace/purchases/${orderId}`);
   }
+
+  /**
+   * Admin: list all marketplace orders/purchases for management.
+   * Backend: GET /admin/marketplace/orders
+   */
+  async getAdminMarketplaceOrders(params?: { status?: OrderStatus; page?: number; limit?: number }) {
+    const searchParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          searchParams.append(key, value.toString());
+        }
+      });
+    }
+    const queryString = searchParams.toString();
+    const endpoint = queryString ? `/admin/marketplace/orders?${queryString}` : '/admin/marketplace/orders';
+    return this.request<MarketplacePurchase[]>(endpoint);
+  }
+
+  /**
+   * Admin: update order status and tracking fields for an order.
+   * Backend: PUT /admin/marketplace/orders/:orderId
+   */
+  async updateMarketplaceOrderStatus(
+    orderId: string,
+    payload: {
+      orderStatus?: OrderStatus;
+      estimatedDeliveryAt?: string | null;
+      deliveredAt?: string | null;
+      trackingNumber?: string | null;
+      trackingUrl?: string | null;
+    }
+  ) {
+    return this.request<MarketplacePurchase>(`/admin/marketplace/orders/${orderId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  }
 }
 
 // Create and export API client instance

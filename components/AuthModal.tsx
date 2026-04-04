@@ -118,7 +118,7 @@ export default function AuthModal() {
             </div>
             <Button
               type="submit"
-              className="w-full h-11 rounded-xl bg-black hover:bg-black/90 text-white font-medium"
+              className="w-full h-11 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-medium"
               disabled={isLoading}
             >
               {isLoading ? 'Signing in...' : 'Continue'}

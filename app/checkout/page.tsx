@@ -393,7 +393,7 @@ export default function CheckoutPage() {
                             <ShoppingCart className="h-6 w-6 text-muted-foreground" />
                           </div>
                         )}
-                        <span className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-center text-xs font-medium py-0.5">
+                        <span className="absolute bottom-0 left-0 right-0 bg-brand-blue-950/75 text-primary-foreground text-center text-xs font-medium py-0.5">
                           {line.quantity}
                         </span>
                       </div>

@@ -46,15 +46,16 @@ export default function ContactUs() {
               </h3>
               <div className="space-y-6">
                 <a
-                  href="mailto:Emmagus12@gmail.com"
+                  href="mailto:brickfundglobal@gmail.com"
                   className="flex items-start gap-4 text-white/85 hover:text-white transition-colors"
                 >
                   <div className="p-2 rounded-lg bg-white/10 shrink-0">
                     <Mail className="h-5 w-5" />
                   </div>
+                  
                   <div>
                     <p className="font-medium text-white">Email</p>
-                    <p>Emmagus12@gmail.com</p>
+                    <p>brickfundglobal@gmail.com</p>
                   </div>
                 </a>
                 <a
