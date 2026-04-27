@@ -1325,11 +1325,10 @@ class ApiClient {
     const candidates = [
       '/marketplace/orders/request',
       '/marketplace/orders',
-      '/marketplace/purchases/request',
-      '/marketplace/purchases',
     ];
 
     let lastError: unknown = null;
+    let allNotFound = true;
     for (const endpoint of candidates) {
       try {
         return await this.request<MarketplacePurchase>(endpoint, {
@@ -1338,7 +1337,15 @@ class ApiClient {
         });
       } catch (error) {
         lastError = error;
+        const status = (error as Error & { status?: number })?.status;
+        if (status !== 404) {
+          allNotFound = false;
+        }
       }
+    }
+
+    if (allNotFound) {
+      throw new Error('Order request service is not available in this environment yet. Please contact support to enable marketplace order requests.');
     }
 
     throw lastError instanceof Error
