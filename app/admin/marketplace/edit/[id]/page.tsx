@@ -40,8 +40,6 @@ export default function AdminMarketplaceEdit() {
     name: '',
     description: '',
     category: '',
-    price: '',
-    currency: 'GHS',
     sku: '',
     brand: '',
     stock: '',
@@ -80,8 +78,6 @@ export default function AdminMarketplaceEdit() {
           name: item.name,
           description: item.description,
           category: item.category,
-          price: item.price.toString(),
-          currency: item.currency,
           sku: (item as any).sku || '',
           brand: (item as any).brand || '',
           stock: typeof (item as any).stock === 'number' ? String((item as any).stock) : '',
@@ -163,7 +159,7 @@ export default function AdminMarketplaceEdit() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.description || !formData.category || !formData.price) {
+    if (!formData.name || !formData.description || !formData.category) {
       toast({
         title: 'Error',
         description: 'Please fill in all required fields',
@@ -190,8 +186,9 @@ export default function AdminMarketplaceEdit() {
         name: formData.name,
         description: formData.description,
         category: formData.category,
-        price: parseFloat(formData.price),
-        currency: formData.currency,
+        // Quote-first model: keep pricing as quote-managed.
+        price: 0,
+        currency: 'GHS',
         sku: formData.sku || undefined,
         brand: formData.brand || undefined,
         stock: stockNumber,
@@ -319,31 +316,8 @@ export default function AdminMarketplaceEdit() {
                 </Select>
               </div>
 
-              {/* Price and Currency */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="price">Price *</Label>
-                  <Input
-                    id="price"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                    placeholder="0.00"
-                    required
-                    className="mt-2"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="currency">Currency *</Label>
-                  <Input
-                    id="currency"
-                    value="GHS"
-                    disabled
-                    className="mt-2"
-                  />
-                </div>
+              <div className="rounded-lg border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+                Pricing is quote-based for this item. Update quote details from order management.
               </div>
 
               {/* SKU / Brand / Stock */}

@@ -12,7 +12,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import {
   Store,
   Search,
-  ShoppingCart,
   RefreshCw,
   ChevronDown,
   ChevronUp,
@@ -22,7 +21,6 @@ import {
 } from 'lucide-react';
 import { apiClient, MarketplaceItem, getMarketplaceItemImageUrl } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
-import { useCart } from '@/contexts/CartContext';
 import { toast } from '@/hooks/use-toast';
 import Header from '@/components/Header';
 
@@ -42,7 +40,6 @@ const ALL_CATEGORY_KEYS = ['cement', 'steel', 'blocks', 'wood', 'roofing', 'fini
 export default function MarketplaceHome() {
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
-  const { addItem } = useCart();
   const [items, setItems] = useState<MarketplaceItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -78,15 +75,6 @@ export default function MarketplaceHome() {
     }
   };
 
-  const formatCurrency = (amount: number, currency: string) => {
-    return new Intl.NumberFormat('en-GH', {
-      style: 'currency',
-      currency: currency || 'GHS',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
   const filteredItems = items.filter((item) => {
     const matchesSearch =
       item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -105,24 +93,14 @@ export default function MarketplaceHome() {
     count: items.filter((i) => i.category === key).length,
   }));
 
-  const handleAddToCart = (e: React.MouseEvent, item: MarketplaceItem) => {
+  const handlePlaceOrder = (e: React.MouseEvent, item: MarketplaceItem) => {
     e.preventDefault();
     e.stopPropagation();
     if (!item.isActive) {
       toast({ title: 'Unavailable', description: 'This item is not available.', variant: 'destructive' });
       return;
     }
-    addItem({
-      itemId: item._id,
-      name: item.name,
-      price: item.price,
-      currency: item.currency,
-      image: getMarketplaceItemImageUrl(item),
-      unitLabel: (item as any).unitLabel,
-      fulfillmentTier: (item as any).fulfillmentTier as 'small' | 'medium' | 'large' | undefined,
-      quantity: 1,
-    });
-    toast({ title: 'Added to cart', description: `${item.name} added to your cart.` });
+    router.push(`/marketplace/${item._id}`);
   };
 
   return (
@@ -139,13 +117,13 @@ export default function MarketplaceHome() {
                 Building materials &amp; supplies for your projects
               </h1>
               <p className="mt-3 text-base text-muted-foreground">
-                Quality cement, steel, timber, roofing, and more. Add to cart and pay securely with Paystack.
+                Quality cement, steel, timber, roofing, and more. Place an order request and receive a supplier quote within 48 hours.
               </p>
             </div>
             <div className="mt-6 flex flex-wrap gap-4 text-sm text-muted-foreground">
               <span className="inline-flex items-center gap-1.5">
                 <ShieldCheck className="h-4 w-4 text-primary" />
-                Secure checkout
+                Quote-first ordering
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <Truck className="h-4 w-4 text-primary" />
@@ -332,27 +310,20 @@ export default function MarketplaceHome() {
                             {item.description}
                           </p>
                           <div className="mt-auto">
-                            <p className="text-xl font-bold text-foreground">
-                              {formatCurrency(item.price, item.currency)}
-                              {(item as any).unitLabel && (
-                                <span className="text-sm font-normal text-muted-foreground ml-1">
-                                  {((item as any).unitLabel as string).toLowerCase().startsWith('per ') ? '' : 'per '}
-                                  {(item as any).unitLabel}
-                                </span>
-                              )}
+                            <p className="text-sm font-medium text-muted-foreground">
+                              Quote on request
                             </p>
                           </div>
                         </CardContent>
                       </Link>
                       <div className="p-5 pt-0">
                         <Button
-                          onClick={(e) => handleAddToCart(e, item)}
+                          onClick={(e) => handlePlaceOrder(e, item)}
                           disabled={!item.isActive}
                           className="w-full rounded-xl h-11 bg-primary hover:opacity-90 text-primary-foreground font-medium shadow-sm"
                           size="sm"
                         >
-                          <ShoppingCart className="h-4 w-4 mr-2" />
-                          Add to Cart
+                          Place Order
                         </Button>
                       </div>
                     </Card>
@@ -361,7 +332,7 @@ export default function MarketplaceHome() {
                 <div className="mt-10 pt-8 border-t border-border flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
                   <span className="inline-flex items-center gap-2">
                     <ShieldCheck className="h-4 w-4 text-primary" />
-                    Secure checkout with Paystack
+                    Admin quote within 48 hours
                   </span>
                   <span className="inline-flex items-center gap-2">
                     <Truck className="h-4 w-4 text-primary" />
@@ -381,7 +352,7 @@ export default function MarketplaceHome() {
           <div className="mt-8 flex justify-end">
             <Link href="/marketplace/purchases">
               <Button variant="outline" className="rounded-lg">
-                My Purchases
+                My Orders
               </Button>
             </Link>
           </div>

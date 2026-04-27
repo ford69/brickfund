@@ -14,7 +14,7 @@ If you see `{"success":false,"error":{"message":"Access denied. No token provide
 The error means a request reached your API **without** an `Authorization: Bearer <token>` header.
 
 - **If the request should be public** (e.g. homepage stats, featured projects, project list):  
-  Your backend must **not** require a token for those routes. Only require a token for routes that need a logged-in user (e.g. `/users/profile`, `/users/investments`, `/subscriptions/current`, dashboard, etc.).
+  Your backend must **not** require a token for those routes. Only require a token for routes that need a logged-in user (e.g. `/users/profile`, `/users/investments`, dashboard, etc.).
 - **If the request should be protected:**  
   Then the frontend is calling it without a token. That can happen if:
   - The user is not logged in (e.g. first visit, or session cleared). The app will now clear state on 401 and show sign-in when needed.

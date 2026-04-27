@@ -39,17 +39,17 @@ export default function PurchaseHistory() {
       return;
     }
 
-    // Allow owners and customers to view marketplace purchase history.
+    // Allow owners and customers to view marketplace order history.
     if (user.role === 'owner' || user.role === 'customer') {
       fetchPurchases();
       return;
     }
 
-    // Investors and admins are redirected away from marketplace purchases.
+    // Investors and admins are redirected away from marketplace orders.
     router.push(user.role === 'admin' ? '/admin' : '/dashboard');
     toast({
       title: 'Access Denied',
-      description: 'Marketplace purchases are only available for marketplace customers and business accounts.',
+      description: 'Marketplace orders are only available for marketplace customers and business accounts.',
       variant: 'destructive',
     });
   }, [user, isAuthenticated, router]);
@@ -62,7 +62,7 @@ export default function PurchaseHistory() {
         setPurchases(response.data);
       }
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Failed to load purchase history';
+      const message = error instanceof Error ? error.message : 'Failed to load order history';
       toast({
         title: 'Error',
         description: message,
@@ -109,10 +109,10 @@ export default function PurchaseHistory() {
   const getStatusBadge = (status: string) => {
     const s = status.toLowerCase();
     const badges: Record<string, { label: string; className: string; icon: typeof Clock }> = {
-      pending: { label: 'Pending payment', className: 'bg-amber-50 text-amber-700 border-0', icon: Clock },
-      paid: { label: 'Paid', className: 'bg-blue-50 text-blue-700 border-0', icon: CheckCircle },
-      processing: { label: 'Processing', className: 'bg-slate-100 text-slate-700 border-0', icon: Package },
-      shipped: { label: 'Shipped', className: 'bg-indigo-50 text-indigo-700 border-0', icon: Truck },
+      pending: { label: 'Order received', className: 'bg-amber-50 text-amber-700 border-0', icon: Clock },
+      paid: { label: 'Quote shared', className: 'bg-blue-50 text-blue-700 border-0', icon: CheckCircle },
+      processing: { label: 'Confirmed', className: 'bg-slate-100 text-slate-700 border-0', icon: Package },
+      shipped: { label: 'Preparing delivery', className: 'bg-indigo-50 text-indigo-700 border-0', icon: Truck },
       out_for_delivery: { label: 'Out for delivery', className: 'bg-indigo-50 text-indigo-700 border-0', icon: Truck },
       delivered: { label: 'Delivered', className: 'bg-emerald-50 text-emerald-700 border-0', icon: CheckCircle },
       completed: { label: 'Completed', className: 'bg-emerald-50 text-emerald-700 border-0', icon: CheckCircle },
@@ -141,7 +141,7 @@ export default function PurchaseHistory() {
               </div>
               <h2 className="text-2xl font-semibold text-foreground mb-2">Access Required</h2>
               <p className="text-muted-foreground mb-8 leading-relaxed">
-                Please sign in as a real estate company to view purchase history.
+                Please sign in as a real estate company to view order history.
               </p>
               <Link href="/signin">
                 <Button className="bg-primary hover:opacity-90 text-white rounded-xl px-6 h-11 font-medium shadow-sm">
@@ -192,28 +192,28 @@ export default function PurchaseHistory() {
           <CardHeader className="border-b border-border bg-card px-6 py-5">
             <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
               <Receipt className="h-5 w-5 text-muted-foreground" />
-              My Purchases
+              My Orders
             </CardTitle>
             <CardDescription className="text-muted-foreground mt-1">
               {purchases.length === 0 && !isLoading
-                ? 'Your purchase history will appear here.'
-                : `${purchases.length} purchase${purchases.length === 1 ? '' : 's'}`}
+                ? 'Your order requests will appear here.'
+                : `${purchases.length} order${purchases.length === 1 ? '' : 's'}`}
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
             {isLoading ? (
               <div className="flex flex-col items-center justify-center py-20">
                 <RefreshCw className="h-8 w-8 animate-spin text-primary mb-4" />
-                <p className="text-muted-foreground text-sm">Loading purchases...</p>
+                <p className="text-muted-foreground text-sm">Loading orders...</p>
               </div>
             ) : purchases.length === 0 ? (
               <div className="text-center py-16 px-6">
                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-muted mb-4">
                   <ShoppingCart className="h-8 w-8 text-muted-foreground" />
                 </div>
-                <p className="text-muted-foreground font-medium mb-1">No purchases yet</p>
+                <p className="text-muted-foreground font-medium mb-1">No orders yet</p>
                 <p className="text-muted-foreground text-sm mb-6 max-w-sm mx-auto">
-                  When you buy from the marketplace, your orders will show up here.
+                  When you place an order request from the marketplace, it will show up here.
                 </p>
                 <Link href="/marketplace">
                   <Button className="bg-primary hover:opacity-90 text-white rounded-xl px-6 h-11 font-medium shadow-sm">
@@ -241,6 +241,12 @@ export default function PurchaseHistory() {
                       </th>
                       <th className="text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider px-6 py-4 hidden lg:table-cell">
                         Est. delivery
+                      </th>
+                      <th className="text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider px-6 py-4 hidden lg:table-cell">
+                        Timeline
+                      </th>
+                      <th className="text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider px-6 py-4 hidden xl:table-cell">
+                        Site
                       </th>
                       <th className="text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider px-6 py-4 hidden md:table-cell">
                         Tracking
@@ -278,6 +284,16 @@ export default function PurchaseHistory() {
                             {purchase.estimatedDeliveryAt
                               ? formatDate(purchase.estimatedDeliveryAt)
                               : '—'}
+                          </td>
+                          <td className="px-6 py-4 text-sm hidden lg:table-cell">
+                            <span className="text-muted-foreground capitalize">
+                              {(purchase.timeline || '—') as string}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-sm hidden xl:table-cell">
+                            <span className="text-muted-foreground line-clamp-1">
+                              {purchase.deliveryAddress || '—'}
+                            </span>
                           </td>
                           <td className="px-6 py-4 text-sm hidden md:table-cell">
                             {purchase.trackingNumber ? (

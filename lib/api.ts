@@ -267,53 +267,6 @@ export interface HowItWorksContent {
   }>;
 }
 
-export type SubscriptionTier = 'starter' | 'pro' | 'growth' | 'enterprise';
-
-export interface SubscriptionPlan {
-  tier: SubscriptionTier;
-  name: string;
-  price: number;
-  duration: number; // in days
-  durationLabel: string;
-  maxProjects: number | 'unlimited';
-  features: string[];
-  popular?: boolean;
-  costRank: string;
-}
-
-export interface UserSubscription {
-  _id: string;
-  userId: string;
-  tier: SubscriptionTier;
-  status: 'active' | 'expired' | 'cancelled' | 'trial';
-  startDate: string;
-  endDate: string;
-  autoRenew: boolean;
-  paymentReference?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface SubscriptionAddOn {
-  _id: string;
-  type: 'featured_boost' | 'marketing_push' | 'branding_customization';
-  name: string;
-  price: number;
-  duration?: number; // in days, for time-based add-ons
-  description: string;
-}
-
-export interface UserAddOn {
-  _id: string;
-  userId: string;
-  projectId?: string;
-  addOnType: string;
-  status: 'active' | 'expired';
-  startDate: string;
-  endDate?: string;
-  createdAt: string;
-}
-
 export interface MarketplaceItem {
   _id: string;
   name: string;
@@ -343,10 +296,10 @@ export function getMarketplaceItemImageUrl(item: MarketplaceItem | null | undefi
 
 /** Order status for tracking (backend may use a subset or different labels) */
 export type OrderStatus =
-  | 'pending'      // Awaiting payment
-  | 'paid'         // Payment confirmed
-  | 'processing'   // Being prepared
-  | 'shipped'      // Dispatched
+  | 'pending'      // Order request received
+  | 'paid'         // Quote shared with customer
+  | 'processing'   // Customer confirmed order
+  | 'shipped'      // Preparing dispatch
   | 'out_for_delivery'
   | 'delivered'
   | 'failed'
@@ -370,6 +323,13 @@ export interface MarketplacePurchase {
   deliveryZoneId?: string;
   deliveryZoneName?: string;
   deliveryAddress?: string;
+  timeline?: 'urgent' | 'flexible';
+  notes?: string;
+  quoteAmount?: number;
+  quoteCurrency?: string;
+  quoteDeliveryWindow?: string;
+  quoteMessage?: string;
+  quotedAt?: string;
   /** Tracking */
   estimatedDeliveryAt?: string;
   deliveredAt?: string;
@@ -377,6 +337,13 @@ export interface MarketplacePurchase {
   trackingUrl?: string;
   /** Multi-item orders: line items (backend may populate for cart orders) */
   items?: Array<{ itemId: string; item?: MarketplaceItem; quantity: number; price: number }>;
+}
+
+export interface MarketplaceOrderRequestPayload {
+  items: Array<{ itemId: string; quantity: number }>;
+  deliveryAddress: string;
+  timeline: 'urgent' | 'flexible';
+  notes?: string;
 }
 
 // API Client Class
@@ -1209,54 +1176,6 @@ class ApiClient {
     return this.request<HowItWorksContent>('/content/how-it-works');
   }
 
-  // Subscription API
-  async getSubscriptionPlans() {
-    return this.request<SubscriptionPlan[]>('/subscriptions/plans');
-  }
-
-  async getUserSubscription() {
-    return this.request<UserSubscription>('/subscriptions/current');
-  }
-
-  async createSubscription(planId: SubscriptionTier, paymentData?: any) {
-    return this.request<{ subscription: UserSubscription; paymentUrl?: string }>('/subscriptions', {
-      method: 'POST',
-      body: JSON.stringify({ tier: planId, ...paymentData }),
-    });
-  }
-
-  async updateSubscription(subscriptionId: string, updates: { autoRenew?: boolean; tier?: SubscriptionTier }) {
-    return this.request<UserSubscription>(`/subscriptions/${subscriptionId}`, {
-      method: 'PATCH',
-      body: JSON.stringify(updates),
-    });
-  }
-
-  async cancelSubscription(subscriptionId: string) {
-    return this.request<UserSubscription>(`/subscriptions/${subscriptionId}/cancel`, {
-      method: 'POST',
-    });
-  }
-
-  async getAvailableAddOns() {
-    return this.request<SubscriptionAddOn[]>('/subscriptions/add-ons');
-  }
-
-  async purchaseAddOn(addOnType: string, projectId?: string) {
-    return this.request<{ addOn: UserAddOn; paymentUrl?: string }>('/subscriptions/add-ons/purchase', {
-      method: 'POST',
-      body: JSON.stringify({ addOnType, projectId }),
-    });
-  }
-
-  async getUserAddOns() {
-    return this.request<UserAddOn[]>('/subscriptions/add-ons/current');
-  }
-
-  async checkSubscriptionFeature(feature: string) {
-    return this.request<{ allowed: boolean; reason?: string }>(`/subscriptions/check-feature/${feature}`);
-  }
-
   // Marketplace API (Admin)
   // NOTE: Backend must implement /admin/marketplace/items endpoints that accept 'admin' role
   // These endpoints should be separate from /marketplace/items which is for 'owner' role
@@ -1398,6 +1317,35 @@ class ApiClient {
     });
   }
 
+  /**
+   * Create a marketplace order request (quote-first flow, no payment step).
+   * Tries common endpoint variants to support backend transition.
+   */
+  async createMarketplaceOrderRequest(payload: MarketplaceOrderRequestPayload) {
+    const candidates = [
+      '/marketplace/orders/request',
+      '/marketplace/orders',
+      '/marketplace/purchases/request',
+      '/marketplace/purchases',
+    ];
+
+    let lastError: unknown = null;
+    for (const endpoint of candidates) {
+      try {
+        return await this.request<MarketplacePurchase>(endpoint, {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        });
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    throw lastError instanceof Error
+      ? lastError
+      : new Error('Unable to submit order request. Please contact support.');
+  }
+
   async getMarketplacePurchases(params?: { page?: number; limit?: number }) {
     const searchParams = new URLSearchParams();
     if (params) {
@@ -1431,7 +1379,35 @@ class ApiClient {
     }
     const queryString = searchParams.toString();
     const endpoint = queryString ? `/admin/marketplace/orders?${queryString}` : '/admin/marketplace/orders';
-    return this.request<MarketplacePurchase[]>(endpoint);
+    try {
+      return await this.request<MarketplacePurchase[]>(endpoint);
+    } catch (error) {
+      const status = (error as Error & { status?: number })?.status;
+      // Backward compatibility: some backend deployments still expose transactions, not orders.
+      if (status !== 404) throw error;
+
+      const fallbackEndpoint = queryString
+        ? `/admin/marketplace/transactions?${queryString}`
+        : '/admin/marketplace/transactions';
+      const fallback = await this.request<any[]>(fallbackEndpoint);
+
+      if (!fallback.success || !fallback.data) {
+        return fallback as ApiResponse<MarketplacePurchase[]>;
+      }
+
+      const normalized = (fallback.data as any[]).map((row) => ({
+        ...row,
+        orderStatus: row.orderStatus || row.purchaseStatus || row.status || 'pending',
+        status: row.status || row.purchaseStatus || 'pending',
+        amount: typeof row.amount === 'number' ? row.amount : 0,
+        currency: row.currency || 'GHS',
+      })) as MarketplacePurchase[];
+
+      return {
+        ...fallback,
+        data: normalized,
+      };
+    }
   }
 
   /**
@@ -1446,12 +1422,27 @@ class ApiClient {
       deliveredAt?: string | null;
       trackingNumber?: string | null;
       trackingUrl?: string | null;
+      quoteAmount?: number;
+      quoteCurrency?: string;
+      quoteDeliveryWindow?: string;
+      quoteMessage?: string;
+      sendQuoteEmail?: boolean;
     }
   ) {
-    return this.request<MarketplacePurchase>(`/admin/marketplace/orders/${orderId}`, {
-      method: 'PUT',
-      body: JSON.stringify(payload),
-    });
+    try {
+      return await this.request<MarketplacePurchase>(`/admin/marketplace/orders/${orderId}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      });
+    } catch (error) {
+      const status = (error as Error & { status?: number })?.status;
+      if (status !== 404) throw error;
+      // Older backends may only support PATCH for this endpoint.
+      return this.request<MarketplacePurchase>(`/admin/marketplace/orders/${orderId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      });
+    }
   }
 }
 

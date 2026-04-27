@@ -6,17 +6,18 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Store,
   ArrowLeft,
-  ShoppingCart,
   RefreshCw,
   XCircle,
   CheckCircle2,
 } from 'lucide-react';
 import { apiClient, MarketplaceItem, getMarketplaceItemImageUrl } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
-import { useCart } from '@/contexts/CartContext';
 import { toast } from '@/hooks/use-toast';
 import Header from '@/components/Header';
 
@@ -24,13 +25,16 @@ export default function MarketplaceItemDetails() {
   const router = useRouter();
   const params = useParams();
   const { user, isAuthenticated } = useAuth();
-  const { addItem } = useCart();
   const itemId = params.id as string;
   const [item, setItem] = useState<MarketplaceItem | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [relatedItems, setRelatedItems] = useState<MarketplaceItem[]>([]);
+  const [deliveryLocation, setDeliveryLocation] = useState('');
+  const [timeline, setTimeline] = useState<'urgent' | 'flexible'>('flexible');
+  const [notes, setNotes] = useState('');
+  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated && user && user.role === 'admin') {
@@ -39,7 +43,7 @@ export default function MarketplaceItemDetails() {
     }
     if (itemId) fetchItem();
   }, [user, isAuthenticated, router, itemId]);
-  // Product detail is public; no auth required to view. Purchase requires sign-in/sign-up.
+  // Product detail is public; no auth required to view. Order request requires sign-in/sign-up.
 
   const fetchItem = async () => {
     try {
@@ -82,38 +86,43 @@ export default function MarketplaceItemDetails() {
     }
   };
 
-  const handleAddToCart = () => {
-    if (!item?.isActive) return;
-    addItem({
-      itemId: item._id,
-      name: item.name,
-      price: item.price,
-      currency: item.currency,
-      image: getMarketplaceItemImageUrl(item),
-      unitLabel: (item as any).unitLabel,
-      fulfillmentTier: (item as any).fulfillmentTier as 'small' | 'medium' | 'large' | undefined,
-      quantity,
-    });
-    toast({ title: 'Added to cart', description: `${item.name} (${quantity}) added to your cart.` });
-  };
-
-  const handleBuyNow = () => {
+  const handlePlaceOrder = async () => {
     if (!item?.isActive) return;
     if (!isAuthenticated || !user) {
-      router.push(`/signup?redirect=${encodeURIComponent('/marketplace/' + itemId)}&reason=purchase`);
+      router.push(`/signup?redirect=${encodeURIComponent('/marketplace/' + itemId)}&reason=order-request`);
       return;
     }
-    addItem({
-      itemId: item._id,
-      name: item.name,
-      price: item.price,
-      currency: item.currency,
-      image: getMarketplaceItemImageUrl(item),
-      unitLabel: (item as any).unitLabel,
-      fulfillmentTier: (item as any).fulfillmentTier as 'small' | 'medium' | 'large' | undefined,
-      quantity,
-    });
-    router.push('/checkout');
+    if (!deliveryLocation.trim()) {
+      toast({
+        title: 'Delivery location required',
+        description: 'Please provide the project or delivery site location before placing your order.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    try {
+      setIsSubmittingOrder(true);
+      await apiClient.createMarketplaceOrderRequest({
+        items: [{ itemId: item._id, quantity }],
+        deliveryAddress: deliveryLocation.trim(),
+        timeline,
+        notes: notes.trim() || undefined,
+      });
+      toast({
+        title: 'Order request submitted',
+        description: `Request sent (${quantity} unit${quantity > 1 ? 's' : ''}, ${timeline}). BrickFund will respond with a quote within 48 hours.`,
+      });
+      router.push('/marketplace/purchases');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to submit order request';
+      toast({
+        title: 'Could not submit request',
+        description: message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmittingOrder(false);
+    }
   };
 
   const formatCurrency = (amount: number, currency: string) => {
@@ -229,7 +238,7 @@ export default function MarketplaceItemDetails() {
             )}
           </div>
 
-          {/* Details & purchase */}
+          {/* Details & order request */}
           <div className="flex flex-col">
             <div className="flex items-center gap-3 mb-3">
               <Badge className="bg-muted text-foreground border-0 font-medium rounded-lg px-3 py-1 capitalize">
@@ -268,7 +277,7 @@ export default function MarketplaceItemDetails() {
               </span>
             </p>
 
-            {/* Purchase controls */}
+            {/* Order request controls */}
             <Card className="border-0 shadow-sm rounded-2xl mb-6">
               <CardContent className="p-6 space-y-4">
                 <div className="flex items-center justify-between">
@@ -296,30 +305,62 @@ export default function MarketplaceItemDetails() {
                   </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="delivery-location">Delivery location</Label>
+                  <Input
+                    id="delivery-location"
+                    value={deliveryLocation}
+                    onChange={(e) => setDeliveryLocation(e.target.value)}
+                    placeholder="Enter project site or delivery address"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Timeline</Label>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant={timeline === 'urgent' ? 'default' : 'outline'}
+                      onClick={() => setTimeline('urgent')}
+                      className="rounded-lg"
+                    >
+                      Urgent
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={timeline === 'flexible' ? 'default' : 'outline'}
+                      onClick={() => setTimeline('flexible')}
+                      className="rounded-lg"
+                    >
+                      Flexible
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="order-notes">Optional notes</Label>
+                  <Textarea
+                    id="order-notes"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder='e.g. "for foundation work"'
+                    className="min-h-[84px]"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-3">
                   <Button
-                    onClick={handleBuyNow}
-                    disabled={!item.isActive}
+                    onClick={handlePlaceOrder}
+                    disabled={!item.isActive || isSubmittingOrder}
                     className="flex-1 h-12 rounded-xl bg-primary hover:opacity-90 text-white font-medium shadow-sm"
                     size="lg"
                   >
-                    <ShoppingCart className="h-4 w-4 mr-2" />
-                    Buy Now
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="lg"
-                    className="h-12 rounded-xl border-border"
-                    onClick={handleAddToCart}
-                    disabled={!item.isActive}
-                  >
-                    Add to Cart
+                    {isSubmittingOrder ? 'Submitting...' : 'Place Order'}
                   </Button>
                 </div>
 
                 <div className="flex justify-between text-xs text-muted-foreground pt-1">
-                  <span>Checkout with cart — secure payment via Paystack</span>
+                  <span>No upfront payment. Admin responds with quote and availability within 48 hours.</span>
                 </div>
               </CardContent>
             </Card>
@@ -344,7 +385,7 @@ export default function MarketplaceItemDetails() {
                   <XCircle className="h-5 w-5 text-amber-600" />
                 </div>
                 <p className="text-sm font-medium text-amber-800">
-                  This item is currently unavailable for purchase.
+                  This item is currently unavailable for ordering.
                 </p>
               </div>
             )}
@@ -352,7 +393,7 @@ export default function MarketplaceItemDetails() {
             {item.isActive && (
               <div className="mt-2 flex items-center gap-2 text-muted-foreground text-sm">
                 <CheckCircle2 className="h-4 w-4 text-green-500" />
-                <span>Available — add to cart and pay at checkout with Paystack</span>
+                <span>Available for order request and supplier quote coordination</span>
               </div>
             )}
           </div>
@@ -394,8 +435,8 @@ export default function MarketplaceItemDetails() {
                       <p className="text-xs text-muted-foreground capitalize mb-1">
                         {related.category}
                       </p>
-                      <p className="text-sm font-semibold text-foreground">
-                        {formatCurrency(related.price, related.currency)}
+                      <p className="text-xs text-muted-foreground">
+                        Quote on request
                       </p>
                     </CardContent>
                   </Link>

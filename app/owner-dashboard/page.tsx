@@ -25,9 +25,7 @@ import {
   Clock,
   AlertTriangle
 } from 'lucide-react';
-import { apiClient, OwnerDashboardData, UserSubscription, Project } from '@/lib/api';
-import { getFeatureLimits } from '@/lib/subscription-utils';
-import SubscriptionStatus from '@/components/SubscriptionStatus';
+import { apiClient, OwnerDashboardData, Project } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function OwnerDashboard() {
@@ -42,7 +40,6 @@ export default function OwnerDashboard() {
   });
   const [projects, setProjects] = useState<OwnerDashboardData['projects']>([]);
   const [recentInvestors, setRecentInvestors] = useState<OwnerDashboardData['recentInvestors']>([]);
-  const [subscription, setSubscription] = useState<UserSubscription | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -58,13 +55,7 @@ export default function OwnerDashboard() {
         setIsLoading(true);
         setError('');
         console.log('[OwnerDashboard] Fetching dashboard data...');
-        
-        // Fetch subscription status
-        const subResponse = await apiClient.getUserSubscription();
-        if (subResponse.success && subResponse.data) {
-          setSubscription(subResponse.data);
-        }
-        
+
         const response = await apiClient.getOwnerDashboard();
         console.log('[OwnerDashboard] API response:', response);
 
@@ -277,11 +268,6 @@ export default function OwnerDashboard() {
             {error}
           </div>
         )}
-
-        {/* Subscription Status */}
-        <div className="mb-6">
-          <SubscriptionStatus subscription={subscription} currentProjectCount={stats.totalProjects} />
-        </div>
 
         {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

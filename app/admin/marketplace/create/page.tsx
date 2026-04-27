@@ -37,8 +37,6 @@ export default function AdminMarketplaceCreate() {
     name: '',
     description: '',
     category: '',
-    price: '',
-    currency: 'GHS',
     sku: '',
     brand: '',
     stock: '0',
@@ -119,7 +117,7 @@ export default function AdminMarketplaceCreate() {
     e.preventDefault();
     
     const stockNumber = parseInt(formData.stock, 10);
-    if (!formData.name || !formData.description || !formData.category || !formData.price || Number.isNaN(stockNumber)) {
+    if (!formData.name || !formData.description || !formData.category || Number.isNaN(stockNumber)) {
       toast({
         title: 'Error',
         description: 'Please fill in all required fields, including a valid stock quantity',
@@ -144,8 +142,9 @@ export default function AdminMarketplaceCreate() {
         name: formData.name,
         description: formData.description,
         category: formData.category,
-        price: parseFloat(formData.price),
-        currency: formData.currency,
+        // Quote-first model: no fixed item pricing at creation time.
+        price: 0,
+        currency: 'GHS',
         sku: formData.sku || undefined,
         brand: formData.brand || undefined,
         stock: stockNumber,
@@ -262,31 +261,8 @@ export default function AdminMarketplaceCreate() {
                 </Select>
               </div>
 
-              {/* Price and Currency */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="price">Price *</Label>
-                  <Input
-                    id="price"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                    placeholder="0.00"
-                    required
-                    className="mt-2"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="currency">Currency *</Label>
-                  <Input
-                    id="currency"
-                    value="GHS"
-                    disabled
-                    className="mt-2"
-                  />
-                </div>
+              <div className="rounded-lg border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+                Pricing is now quote-based. No fixed price is set at item creation.
               </div>
 
               {/* SKU / Brand / Stock */}

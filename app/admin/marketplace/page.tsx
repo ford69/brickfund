@@ -111,15 +111,6 @@ export default function AdminMarketplaceList() {
     }
   };
 
-  const formatCurrency = (amount: number, currency: string) => {
-    return new Intl.NumberFormat('en-GH', {
-      style: 'currency',
-      currency: currency || 'GHS',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
   const filteredItems = items.filter((item) =>
     item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     item.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -219,7 +210,7 @@ export default function AdminMarketplaceList() {
                       <TableHead>Image</TableHead>
                       <TableHead>Name</TableHead>
                       <TableHead>Category</TableHead>
-                      <TableHead>Price</TableHead>
+                      <TableHead>Pricing</TableHead>
                       <TableHead>Stock</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Actions</TableHead>
@@ -246,7 +237,7 @@ export default function AdminMarketplaceList() {
                           <Badge variant="outline">{item.category}</Badge>
                         </TableCell>
                         <TableCell>
-                          {formatCurrency(item.price, item.currency)}
+                          <span className="text-sm text-muted-foreground">Quote on request</span>
                         </TableCell>
                         <TableCell>
                           {(() => {

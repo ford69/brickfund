@@ -133,20 +133,22 @@ export default function OrderTrackingPage() {
   const currentStepIndex = getStepIndex(currentStatus === 'completed' ? 'delivered' : currentStatus);
   const itemName = order.item && typeof order.item === 'object' ? order.item.name : 'Order items';
   const isPickup = order.fulfillmentMethod === 'pickup';
+  const orderTimeline = order.timeline || ((order as any).deliveryTimeline as string | undefined);
+  const orderNotes = order.notes || ((order as any).customerNotes as string | undefined);
 
   const steps: { key: OrderStatus; label: string; icon: typeof Package }[] = isPickup
     ? [
-        { key: 'pending', label: 'Order placed', icon: Receipt },
-        { key: 'paid', label: 'Payment confirmed', icon: CheckCircle2 },
-        { key: 'processing', label: 'Preparing for pickup', icon: Package },
+        { key: 'pending', label: 'Order request received', icon: Receipt },
+        { key: 'paid', label: 'Quote shared (within 48 hours)', icon: CheckCircle2 },
+        { key: 'processing', label: 'Order confirmed', icon: Package },
         { key: 'shipped', label: 'Ready for pickup', icon: Store },
         { key: 'delivered', label: 'Picked up', icon: CheckCircle2 },
       ]
     : [
-        { key: 'pending', label: 'Order placed', icon: Receipt },
-        { key: 'paid', label: 'Payment confirmed', icon: CheckCircle2 },
-        { key: 'processing', label: 'Processing', icon: Package },
-        { key: 'shipped', label: 'Shipped', icon: Truck },
+        { key: 'pending', label: 'Order request received', icon: Receipt },
+        { key: 'paid', label: 'Quote shared (within 48 hours)', icon: CheckCircle2 },
+        { key: 'processing', label: 'Order confirmed', icon: Package },
+        { key: 'shipped', label: 'Preparing dispatch', icon: Truck },
         { key: 'delivered', label: 'Delivered', icon: CheckCircle2 },
       ];
 
@@ -178,7 +180,7 @@ export default function OrderTrackingPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
               <Package className="h-4 w-4 text-muted-foreground" />
-              Order status
+              Order progress
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
@@ -242,6 +244,18 @@ export default function OrderTrackingPage() {
               <p className="text-sm flex items-start gap-2">
                 <MapPin className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                 <span>{order.deliveryAddress}</span>
+              </p>
+            )}
+            {orderTimeline && (
+              <p className="text-sm">
+                <span className="text-muted-foreground">Requested timeline:</span>{' '}
+                <span className="font-medium text-foreground capitalize">{orderTimeline}</span>
+              </p>
+            )}
+            {orderNotes && (
+              <p className="text-sm">
+                <span className="text-muted-foreground">Notes:</span>{' '}
+                <span className="text-foreground">{orderNotes}</span>
               </p>
             )}
             {order.estimatedDeliveryAt && (

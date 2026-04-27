@@ -19,6 +19,7 @@ import {
   BarChart3,
   Activity,
   Package,
+  ShoppingCart,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -29,6 +30,7 @@ const sidebarItems: Array<{ id: string; label: string; icon: React.ComponentType
   { id: 'approvals', label: 'Approvals', icon: CheckCircle, href: '/admin?tab=approvals' },
   { id: 'kyc', label: 'KYC Review', icon: FileText, href: '/admin?tab=kyc' },
   { id: 'inventory', label: 'Inventory', icon: Store, href: '/admin/marketplace' },
+  { id: 'orders', label: 'Orders', icon: ShoppingCart, href: '/admin/marketplace/orders' },
   { id: 'fulfillment', label: 'Fulfillment Settings', icon: Package, href: '/admin/fulfillment' },
   { id: 'stats', label: 'Statistics', icon: BarChart3, href: '/admin?tab=stats' },
   { id: 'activity', label: 'Activity', icon: Activity, href: '/admin?tab=activity' },
@@ -72,6 +74,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   const isMarketplace = pathname.startsWith('/admin/marketplace');
+  const isMarketplaceOrders = pathname.startsWith('/admin/marketplace/orders');
   const isFulfillment = pathname.startsWith('/admin/fulfillment');
   const isProjectReview = pathname.startsWith('/admin/projects/');
   const isAdminRoot = pathname === '/admin';
@@ -210,7 +213,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </Button>
             <div>
               <h1 className="text-lg font-semibold text-slate-900">
-                {isProjectReview ? 'Review Project' : isMarketplace ? 'Marketplace' : isFulfillment ? 'Fulfillment Settings' : 'Admin Dashboard'}
+                {isProjectReview
+                  ? 'Review Project'
+                  : isMarketplaceOrders
+                    ? 'Marketplace Orders'
+                    : isMarketplace
+                      ? 'Marketplace'
+                      : isFulfillment
+                        ? 'Fulfillment Settings'
+                        : 'Admin Dashboard'}
               </h1>
               <p className="text-xs text-slate-500 hidden sm:block">BrickFund Admin</p>
             </div>

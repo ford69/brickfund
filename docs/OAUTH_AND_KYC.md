@@ -27,7 +27,7 @@ If you see **401 Unauthorized** or **"Access denied. No token provided"** when u
 | POST | `/api/auth/login` | **Yes** |
 | POST | `/api/auth/register` | **Yes** |
 
-Whitelist these paths in your auth middleware so they are excluded from the “require token” check. Only protect routes that need a logged-in user (e.g. `/api/users/profile`, `/api/users/investments`, `/api/subscriptions/current`, etc.).
+Whitelist these paths in your auth middleware so they are excluded from the “require token” check. Only protect routes that need a logged-in user (e.g. `/api/users/profile`, `/api/users/investments`, etc.).
 
 ---
 
