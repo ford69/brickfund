@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Building2, Mail, Lock, Eye, EyeOff, User, Phone, Briefcase, TrendingUp, ShoppingCart } from 'lucide-react';
+import { Building2, Mail, Lock, Eye, EyeOff, User, Phone, Briefcase, TrendingUp, ClipboardList } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getOAuthRedirectUrl } from '@/lib/api';
 
@@ -16,7 +16,11 @@ type AccountRole = 'customer' | 'investor' | 'owner';
 export default function SignUp() {
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get('redirect') || '';
-  const isPurchaseFlow = searchParams.get('reason') === 'purchase' || redirectTo.includes('checkout') || (redirectTo.startsWith('/marketplace/') && redirectTo !== '/marketplace' && redirectTo !== '/marketplace/');
+  const isPurchaseFlow =
+    searchParams.get('reason') === 'order-request' ||
+    (redirectTo.startsWith('/marketplace/') &&
+      redirectTo !== '/marketplace' &&
+      redirectTo !== '/marketplace/');
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -67,7 +71,7 @@ export default function SignUp() {
         companyName: userType === 'owner' ? formData.companyName : undefined
       });
 
-      // Redirect: explicit redirect param (e.g. checkout or product page) takes precedence
+      // Redirect: explicit redirect param (e.g. order request detail page) takes precedence
       if (redirectTo && redirectTo.startsWith('/')) {
         router.push(redirectTo);
         return;
@@ -133,8 +137,8 @@ export default function SignUp() {
             <CardTitle>Join BrickFund today</CardTitle>
             {isPurchaseFlow && (
               <p className="text-sm text-muted-foreground mt-2 flex items-center gap-2">
-                <ShoppingCart className="h-4 w-4 text-primary" />
-                Create an account to continue your purchase.
+                <ClipboardList className="h-4 w-4 text-primary" />
+                Create an account to continue your order request.
               </p>
             )}
           </CardHeader>
@@ -160,11 +164,11 @@ export default function SignUp() {
                   />
                   <div className="flex items-center space-x-3 flex-1">
                     <div className={`p-2 rounded-lg ${userType === 'customer' ? 'bg-primary/10' : 'bg-gray-100'}`}>
-                      <ShoppingCart className={`h-5 w-5 ${userType === 'customer' ? 'text-primary' : 'text-gray-600'}`} />
+                      <ClipboardList className={`h-5 w-5 ${userType === 'customer' ? 'text-primary' : 'text-gray-600'}`} />
                     </div>
                     <div>
                       <h3 className="font-medium text-gray-900">Customer</h3>
-                      <p className="text-sm text-muted-foreground">Purchase items in the marketplace</p>
+                      <p className="text-sm text-muted-foreground">Request quotes for marketplace items</p>
                     </div>
                   </div>
                 </label>

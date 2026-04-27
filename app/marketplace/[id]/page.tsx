@@ -15,6 +15,8 @@ import {
   RefreshCw,
   XCircle,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { apiClient, MarketplaceItem, getMarketplaceItemImageUrl } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
@@ -31,9 +33,21 @@ export default function MarketplaceItemDetails() {
   const [quantity, setQuantity] = useState(1);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [relatedItems, setRelatedItems] = useState<MarketplaceItem[]>([]);
+  const [wizardStep, setWizardStep] = useState<1 | 2 | 3 | 4 | 5 | 6>(1);
   const [deliveryLocation, setDeliveryLocation] = useState('');
+  const [deliveryType, setDeliveryType] = useState<'delivery' | 'pickup'>('delivery');
+  const [siteAccessibility, setSiteAccessibility] = useState<'easy' | 'restricted' | 'heavy-truck-limited'>('easy');
+  const [projectType, setProjectType] = useState('Residential');
   const [timeline, setTimeline] = useState<'urgent' | 'flexible'>('flexible');
+  const [orderType, setOrderType] = useState<'one-time' | 'recurring'>('one-time');
+  const [brandPreference, setBrandPreference] = useState('');
   const [notes, setNotes] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [whatsAppNumber, setWhatsAppNumber] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [budgetRange, setBudgetRange] = useState('');
+  const [showEstimatedPrice, setShowEstimatedPrice] = useState(false);
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
 
   useEffect(() => {
@@ -100,13 +114,36 @@ export default function MarketplaceItemDetails() {
       });
       return;
     }
+    if (!fullName.trim() || !phoneNumber.trim()) {
+      toast({
+        title: 'Contact details required',
+        description: 'Please provide your full name and phone number so we can send your quote.',
+        variant: 'destructive',
+      });
+      return;
+    }
     try {
       setIsSubmittingOrder(true);
+      const enrichedNotes = [
+        notes.trim() ? `Notes: ${notes.trim()}` : null,
+        `Delivery type: ${deliveryType}`,
+        `Site accessibility: ${siteAccessibility}`,
+        `Project type: ${projectType}`,
+        `Order type: ${orderType}`,
+        brandPreference.trim() ? `Brand preference: ${brandPreference.trim()}` : null,
+        `Contact name: ${fullName.trim()}`,
+        `Phone: ${phoneNumber.trim()}`,
+        whatsAppNumber.trim() ? `WhatsApp: ${whatsAppNumber.trim()}` : null,
+        companyName.trim() ? `Company: ${companyName.trim()}` : null,
+        budgetRange.trim() ? `Budget range: ${budgetRange.trim()}` : null,
+      ]
+        .filter(Boolean)
+        .join('\n');
       await apiClient.createMarketplaceOrderRequest({
         items: [{ itemId: item._id, quantity }],
         deliveryAddress: deliveryLocation.trim(),
         timeline,
-        notes: notes.trim() || undefined,
+        notes: enrichedNotes || undefined,
       });
       toast({
         title: 'Order request submitted',
@@ -148,6 +185,12 @@ export default function MarketplaceItemDetails() {
   }, [item]);
 
   const activeImage = galleryImages[activeImageIndex] || getMarketplaceItemImageUrl(item);
+  const estimatedAmount = item ? item.price * quantity : 0;
+  const goToNextStep = () => setWizardStep((prev) => (prev < 6 ? ((prev + 1) as 1 | 2 | 3 | 4 | 5 | 6) : prev));
+  const goToPrevStep = () => setWizardStep((prev) => (prev > 1 ? ((prev - 1) as 1 | 2 | 3 | 4 | 5 | 6) : prev));
+  const unitLabel =
+    ((item as any)?.unitLabel as string) ||
+    ((item as any)?.unitType ? `per ${(item as any).unitType}` : 'per unit');
 
   if (isLoading) {
     return (
@@ -203,13 +246,35 @@ export default function MarketplaceItemDetails() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14">
           {/* Media / gallery */}
           <div className="space-y-4">
-            <Card className="overflow-hidden border-0 shadow-sm rounded-2xl aspect-square lg:aspect-auto lg:min-h-[420px]">
+            <Card className="overflow-hidden border-0 shadow-sm rounded-2xl max-w-xl">
               {activeImage ? (
-                <img
-                  src={activeImage}
-                  alt={item.name}
-                  className="w-full h-full object-cover"
-                />
+                <div className="relative">
+                  <img
+                    src={activeImage}
+                    alt={item.name}
+                    className="w-full h-[280px] sm:h-[340px] object-cover"
+                  />
+                  {galleryImages.length > 1 && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setActiveImageIndex((idx) => (idx === 0 ? galleryImages.length - 1 : idx - 1))}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-background/90 p-2 shadow-sm hover:bg-background"
+                        aria-label="Previous image"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveImageIndex((idx) => (idx === galleryImages.length - 1 ? 0 : idx + 1))}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-background/90 p-2 shadow-sm hover:bg-background"
+                        aria-label="Next image"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </>
+                  )}
+                </div>
               ) : (
                 <div className="w-full h-full min-h-[320px] flex items-center justify-center bg-muted">
                   <Store className="h-24 w-24 text-slate-300" />
@@ -260,107 +325,164 @@ export default function MarketplaceItemDetails() {
             <h1 className="text-3xl sm:text-4xl font-bold text-foreground tracking-tight mb-2">
               {item.name}
             </h1>
-            <p className="text-3xl font-bold text-foreground mb-1">
-              {formatCurrency(item.price, item.currency)}
-              <span className="ml-2 text-base font-medium text-muted-foreground">
-                {((item as any).unitLabel as string) ||
-                  ((item as any).unitType ? `per ${(item as any).unitType}` : 'per unit')}
-              </span>
-            </p>
-            <p className="text-sm text-muted-foreground mb-4">
-              Total for {quantity}{' '}
-              {((item as any).unitLabel as string) ||
-                ((item as any).unitType ? (item as any).unitType : 'unit')}
-              :{' '}
-              <span className="font-semibold text-foreground">
-                {formatCurrency(item.price * quantity, item.currency)}
-              </span>
-            </p>
+            <p className="text-lg font-semibold text-foreground mb-1">Quote on request</p>
+            <p className="text-sm text-muted-foreground mb-4">{unitLabel}</p>
 
             {/* Order request controls */}
             <Card className="border-0 shadow-sm rounded-2xl mb-6">
               <CardContent className="p-6 space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Quantity</span>
-                  <div className="inline-flex items-center rounded-full border border-border overflow-hidden">
-                    <button
-                      type="button"
-                      onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                      className="px-3 py-1 text-sm font-medium text-muted-foreground hover:bg-accent"
-                      aria-label="Decrease quantity"
-                    >
-                      –
-                    </button>
-                    <span className="px-4 py-1 text-sm font-medium text-foreground min-w-[2.5rem] text-center">
-                      {quantity}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setQuantity((q) => q + 1)}
-                      className="px-3 py-1 text-sm font-medium text-muted-foreground hover:bg-accent"
-                      aria-label="Increase quantity"
-                    >
-                      +
-                    </button>
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Step {wizardStep} of 6</span>
+                  <span>Request Quote</span>
+                </div>
+                <div className="h-2 w-full rounded-full bg-muted">
+                  <div className="h-2 rounded-full bg-primary transition-all" style={{ width: `${(wizardStep / 6) * 100}%` }} />
+                </div>
+
+                {wizardStep === 1 && (
+                  <div className="space-y-3">
+                    <Label>Quantity</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {[50, 100, 200].map((quickQty) => (
+                        <Button key={quickQty} type="button" variant={quantity === quickQty ? 'default' : 'outline'} onClick={() => setQuantity(quickQty)}>
+                          {quickQty}
+                        </Button>
+                      ))}
+                    </div>
+                    <div className="inline-flex items-center rounded-full border border-border overflow-hidden">
+                      <button type="button" onClick={() => setQuantity((q) => Math.max(1, q - 1))} className="px-3 py-1 text-sm hover:bg-accent">-</button>
+                      <span className="px-4 py-1 text-sm font-medium text-foreground min-w-[2.5rem] text-center">{quantity}</span>
+                      <button type="button" onClick={() => setQuantity((q) => q + 1)} className="px-3 py-1 text-sm hover:bg-accent">+</button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">1 bag = 50kg (adjust based on your order need).</p>
                   </div>
-                </div>
+                )}
 
-                <div className="space-y-2">
-                  <Label htmlFor="delivery-location">Delivery location</Label>
-                  <Input
-                    id="delivery-location"
-                    value={deliveryLocation}
-                    onChange={(e) => setDeliveryLocation(e.target.value)}
-                    placeholder="Enter project site or delivery address"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Timeline</Label>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      variant={timeline === 'urgent' ? 'default' : 'outline'}
-                      onClick={() => setTimeline('urgent')}
-                      className="rounded-lg"
-                    >
-                      Urgent
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={timeline === 'flexible' ? 'default' : 'outline'}
-                      onClick={() => setTimeline('flexible')}
-                      className="rounded-lg"
-                    >
-                      Flexible
-                    </Button>
+                {wizardStep === 2 && (
+                  <div className="space-y-3">
+                    <div>
+                      <Label htmlFor="delivery-location">Project / delivery location</Label>
+                      <Input id="delivery-location" value={deliveryLocation} onChange={(e) => setDeliveryLocation(e.target.value)} placeholder="Enter project site or delivery address" />
+                    </div>
+                    <div>
+                      <Label>Delivery type</Label>
+                      <div className="flex gap-2 mt-2">
+                        <Button type="button" variant={deliveryType === 'delivery' ? 'default' : 'outline'} onClick={() => setDeliveryType('delivery')}>Delivery</Button>
+                        <Button type="button" variant={deliveryType === 'pickup' ? 'default' : 'outline'} onClick={() => setDeliveryType('pickup')}>Pickup</Button>
+                      </div>
+                    </div>
+                    <div>
+                      <Label>Site accessibility</Label>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        <Button type="button" variant={siteAccessibility === 'easy' ? 'default' : 'outline'} onClick={() => setSiteAccessibility('easy')}>Easy access</Button>
+                        <Button type="button" variant={siteAccessibility === 'restricted' ? 'default' : 'outline'} onClick={() => setSiteAccessibility('restricted')}>Restricted</Button>
+                        <Button type="button" variant={siteAccessibility === 'heavy-truck-limited' ? 'default' : 'outline'} onClick={() => setSiteAccessibility('heavy-truck-limited')}>Heavy truck limited</Button>
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="project-type">Project type</Label>
+                      <Input id="project-type" value={projectType} onChange={(e) => setProjectType(e.target.value)} placeholder="Residential, commercial, road works..." />
+                    </div>
                   </div>
-                </div>
+                )}
 
-                <div className="space-y-2">
-                  <Label htmlFor="order-notes">Optional notes</Label>
-                  <Textarea
-                    id="order-notes"
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder='e.g. "for foundation work"'
-                    className="min-h-[84px]"
-                  />
-                </div>
+                {wizardStep === 3 && (
+                  <div className="space-y-3">
+                    <div>
+                      <Label>Timeline</Label>
+                      <div className="flex gap-2 mt-2">
+                        <Button type="button" variant={timeline === 'urgent' ? 'default' : 'outline'} onClick={() => setTimeline('urgent')}>Urgent</Button>
+                        <Button type="button" variant={timeline === 'flexible' ? 'default' : 'outline'} onClick={() => setTimeline('flexible')}>Flexible</Button>
+                      </div>
+                    </div>
+                    <div>
+                      <Label>Order type</Label>
+                      <div className="flex gap-2 mt-2">
+                        <Button type="button" variant={orderType === 'one-time' ? 'default' : 'outline'} onClick={() => setOrderType('one-time')}>One-time</Button>
+                        <Button type="button" variant={orderType === 'recurring' ? 'default' : 'outline'} onClick={() => setOrderType('recurring')}>Recurring</Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
-                <div className="flex flex-col gap-3">
-                  <Button
-                    onClick={handlePlaceOrder}
-                    disabled={!item.isActive || isSubmittingOrder}
-                    className="flex-1 h-12 rounded-xl bg-primary hover:opacity-90 text-white font-medium shadow-sm"
-                    size="lg"
-                  >
-                    {isSubmittingOrder ? 'Submitting...' : 'Place Order'}
+                {wizardStep === 4 && (
+                  <div className="space-y-3">
+                    <div>
+                      <Label htmlFor="brand-preference">Brand preference (optional)</Label>
+                      <Input id="brand-preference" value={brandPreference} onChange={(e) => setBrandPreference(e.target.value)} placeholder="Ghacem, Dzata, any trusted brand..." />
+                    </div>
+                    <div>
+                      <Label htmlFor="order-notes">Additional notes</Label>
+                      <Textarea id="order-notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder='e.g. "for foundation work"' className="min-h-[84px]" />
+                    </div>
+                  </div>
+                )}
+
+                {wizardStep === 5 && (
+                  <div className="space-y-3">
+                    <div>
+                      <Label htmlFor="full-name">Full name</Label>
+                      <Input id="full-name" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Your full name" />
+                    </div>
+                    <div>
+                      <Label htmlFor="phone-number">Phone number</Label>
+                      <Input id="phone-number" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="Primary contact number" />
+                    </div>
+                    <div>
+                      <Label htmlFor="whatsapp-number">WhatsApp (optional)</Label>
+                      <Input id="whatsapp-number" value={whatsAppNumber} onChange={(e) => setWhatsAppNumber(e.target.value)} placeholder="WhatsApp number" />
+                    </div>
+                    <div>
+                      <Label htmlFor="company-name">Company (optional)</Label>
+                      <Input id="company-name" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Company or business name" />
+                    </div>
+                  </div>
+                )}
+
+                {wizardStep === 6 && (
+                  <div className="space-y-3 text-sm">
+                    <div className="rounded-xl border border-border p-3 space-y-1">
+                      <p><span className="text-muted-foreground">Product:</span> {item.name}</p>
+                      <p><span className="text-muted-foreground">Quantity:</span> {quantity}</p>
+                      <p><span className="text-muted-foreground">Location:</span> {deliveryLocation || 'N/A'}</p>
+                      <p><span className="text-muted-foreground">Timeline:</span> {timeline}</p>
+                    </div>
+                    <div>
+                      <Label htmlFor="budget-range">Budget range (optional)</Label>
+                      <Input id="budget-range" value={budgetRange} onChange={(e) => setBudgetRange(e.target.value)} placeholder="e.g. GHS 10,000 - 15,000" />
+                    </div>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input type="checkbox" checked={showEstimatedPrice} onChange={(e) => setShowEstimatedPrice(e.target.checked)} />
+                      Show estimated price
+                    </label>
+                    {showEstimatedPrice && <p className="text-sm font-medium text-foreground">Estimated: {formatCurrency(estimatedAmount, item.currency)}</p>}
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" onClick={goToPrevStep} disabled={wizardStep === 1} className="flex-1">
+                    Previous
                   </Button>
+                  {wizardStep < 6 ? (
+                    <Button type="button" onClick={goToNextStep} className="flex-1">
+                      Next
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={handlePlaceOrder}
+                      disabled={!item.isActive || isSubmittingOrder}
+                      className="flex-1 h-12 rounded-xl bg-primary hover:opacity-90 text-white font-medium shadow-sm"
+                      size="lg"
+                    >
+                      {isSubmittingOrder ? 'Submitting...' : 'Request Quote'}
+                    </Button>
+                  )}
                 </div>
 
-                <div className="flex justify-between text-xs text-muted-foreground pt-1">
-                  <span>No upfront payment. Admin responds with quote and availability within 48 hours.</span>
+                <div className="text-xs text-muted-foreground pt-1 space-y-1">
+                  <p>✔ Verified suppliers</p>
+                  <p>✔ Best market rates</p>
+                  <p>✔ Response within 24 hours</p>
                 </div>
               </CardContent>
             </Card>

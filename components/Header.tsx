@@ -14,16 +14,14 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Menu, X, Building2, User, Shield, LogOut, ChevronDown, Store, ShoppingCart } from 'lucide-react';
+import { Menu, X, Building2, User, Shield, LogOut, ChevronDown, Store, Receipt } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAuthModal } from '@/contexts/AuthModalContext';
-import { useCart } from '@/contexts/CartContext';
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false);
   const { user, isAuthenticated, logout } = useAuth();
   const { openAuthModal } = useAuthModal();
-  const { itemCount } = useCart();
 
   const handleLogout = async () => {
     try {
@@ -82,18 +80,6 @@ export default function Header() {
           </nav>
 
           <div className="hidden md:flex items-center gap-3">
-            <Link
-              href="/cart"
-              className="relative flex items-center justify-center w-9 h-9 rounded-lg text-primary hover:text-blue-800 hover:bg-primary/10 transition-colors"
-              aria-label={`Cart${itemCount > 0 ? `, ${itemCount} items` : ''}`}
-            >
-              <ShoppingCart className="h-5 w-5" />
-              {itemCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 min-w-[1.25rem] h-5 px-1 flex items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground shadow-sm">
-                  {itemCount > 99 ? '99+' : itemCount}
-                </span>
-              )}
-            </Link>
             {isAuthenticated ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -169,6 +155,14 @@ export default function Header() {
                       )}
                     </Link>
                   </DropdownMenuItem>
+                  {user?.role !== 'admin' && (
+                    <DropdownMenuItem asChild>
+                      <Link href="/marketplace/purchases" className="flex items-center rounded-lg cursor-pointer">
+                        <Receipt className="mr-2 h-4 w-4 text-primary shrink-0" />
+                        My Orders
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={handleLogout}
@@ -266,14 +260,6 @@ export default function Header() {
               >
                 Marketplace
               </Link>
-              <Link
-                href="/cart"
-                className="px-3 py-2.5 rounded-lg font-medium text-foreground hover:bg-primary/10 hover:text-primary transition-colors flex items-center gap-2"
-                onClick={() => setIsOpen(false)}
-              >
-                <ShoppingCart className="h-4 w-4 text-primary" />
-                Cart{itemCount > 0 ? ` (${itemCount})` : ''}
-              </Link>
               <div className="mt-3 pt-3 border-t border-border flex flex-col gap-1">
                 {isAuthenticated ? (
                   <>
@@ -339,6 +325,14 @@ export default function Header() {
                         )}
                       </Button>
                     </Link>
+                    {user?.role !== 'admin' && (
+                      <Link href="/marketplace/purchases" onClick={() => setIsOpen(false)}>
+                        <Button variant="ghost" className="w-full justify-start rounded-lg text-foreground hover:text-primary">
+                          <Receipt className="h-4 w-4 mr-2 text-primary shrink-0" />
+                          My Orders
+                        </Button>
+                      </Link>
+                    )}
                     <Button
                       variant="ghost"
                       onClick={handleLogout}

@@ -4,12 +4,10 @@ import React, { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { apiClient } from '@/lib/api';
-import { useCart } from '@/contexts/CartContext';
 
 const PaymentSuccessPage: React.FC = () => {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { clearCart } = useCart();
   const [loading, setLoading] = useState(true);
   const [payment, setPayment] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -33,13 +31,6 @@ const PaymentSuccessPage: React.FC = () => {
       setLoading(false);
     }
   }, [reference, paymentId]);
-
-  // After a successful marketplace payment, clear the cart so purchased items are no longer in it
-  useEffect(() => {
-    if (!loading && !error && source === 'marketplace') {
-      clearCart();
-    }
-  }, [loading, error, source, clearCart]);
 
   const verifyPayment = async (ref: string, _pId: string) => {
     try {
