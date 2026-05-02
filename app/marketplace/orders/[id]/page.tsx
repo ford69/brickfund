@@ -45,7 +45,7 @@ export default function OrderTrackingPage() {
       router.replace(`/signin?redirect=${encodeURIComponent('/marketplace/orders/' + orderId)}`);
       return;
     }
-    if (user.role !== 'customer' && user.role !== 'owner') {
+    if (user.role !== 'customer' && user.role !== 'owner' && user.role !== 'investor') {
       router.push('/marketplace');
       return;
     }

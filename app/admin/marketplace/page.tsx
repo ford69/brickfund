@@ -271,7 +271,7 @@ export default function AdminMarketplaceList() {
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-2">
-                            <Link href={`/marketplace/${item._id}`} target="_blank">
+                            <Link href={`/admin/marketplace/view/${item._id}`}>
                               <Button variant="outline" size="sm">
                                 <Store className="h-4 w-4 mr-1" />
                                 View

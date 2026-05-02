@@ -354,7 +354,6 @@ export default function MarketplaceItemDetails() {
                       <span className="px-4 py-1 text-sm font-medium text-foreground min-w-[2.5rem] text-center">{quantity}</span>
                       <button type="button" onClick={() => setQuantity((q) => q + 1)} className="px-3 py-1 text-sm hover:bg-accent">+</button>
                     </div>
-                    <p className="text-xs text-muted-foreground">1 bag = 50kg (adjust based on your order need).</p>
                   </div>
                 )}
 

@@ -39,17 +39,17 @@ export default function PurchaseHistory() {
       return;
     }
 
-    // Allow owners and customers to view marketplace order history.
-    if (user.role === 'owner' || user.role === 'customer') {
+    // Allow owners, customers, and investors to view marketplace order history.
+    if (user.role === 'owner' || user.role === 'customer' || user.role === 'investor') {
       fetchPurchases();
       return;
     }
 
-    // Investors and admins are redirected away from marketplace orders.
+    // Admins are redirected away from marketplace orders.
     router.push(user.role === 'admin' ? '/admin' : '/dashboard');
     toast({
       title: 'Access Denied',
-      description: 'Marketplace orders are only available for marketplace customers and business accounts.',
+      description: 'Marketplace orders are only available for customer, owner, or investor accounts.',
       variant: 'destructive',
     });
   }, [user, isAuthenticated, router]);
@@ -141,7 +141,7 @@ export default function PurchaseHistory() {
               </div>
               <h2 className="text-2xl font-semibold text-foreground mb-2">Access Required</h2>
               <p className="text-muted-foreground mb-8 leading-relaxed">
-                Please sign in as a real estate company to view order history.
+                Please sign in to view your marketplace order history.
               </p>
               <Link href="/signin">
                 <Button className="bg-primary hover:opacity-90 text-white rounded-xl px-6 h-11 font-medium shadow-sm">
