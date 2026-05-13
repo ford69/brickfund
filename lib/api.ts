@@ -433,10 +433,33 @@ class ApiClient {
     }
   }
 
+  /** Write token and confirm localStorage read-back (avoids redirect-before-persist races). */
+  persistToken(token: string): boolean {
+    if (typeof window === 'undefined') return false;
+    try {
+      localStorage.setItem('token', token);
+      this.token = token;
+      return localStorage.getItem('token') === token;
+    } catch {
+      return false;
+    }
+  }
+
+  persistRefreshToken(refreshToken: string): boolean {
+    if (typeof window === 'undefined') return false;
+    try {
+      localStorage.setItem('refreshToken', refreshToken);
+      return localStorage.getItem('refreshToken') === refreshToken;
+    } catch {
+      return false;
+    }
+  }
+
   clearToken() {
     this.token = null;
     if (typeof window !== 'undefined') {
       localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
     }
   }
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { apiClient } from '@/lib/api';
 
@@ -10,28 +10,43 @@ export default function AuthCallbackPage() {
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<'loading' | 'done' | 'error'>('loading');
   const [message, setMessage] = useState('Signing you in...');
+  const handledRef = useRef(false);
 
   useEffect(() => {
+    if (handledRef.current) return;
+    handledRef.current = true;
+
     const token = searchParams.get('token');
+    const refreshToken = searchParams.get('refreshToken');
     const error = searchParams.get('error');
     const returnUrl = searchParams.get('returnUrl') || searchParams.get('redirect_uri') || '/dashboard';
     const safeReturnUrl = returnUrl.startsWith('/') ? returnUrl : `/${returnUrl.replace(/^\//, '')}`;
 
+    const stripSensitiveQuery = () => {
+      try {
+        window.history.replaceState({}, document.title, '/auth/callback');
+      } catch {
+        // ignore
+      }
+    };
+
+    const redirectToSignIn = (signInError?: string) => {
+      stripSensitiveQuery();
+      const query = signInError ? `?error=${encodeURIComponent(signInError)}` : '';
+      window.location.replace(`/signin${query}`);
+    };
+
     if (error) {
       setStatus('error');
       setMessage(error === 'access_denied' ? 'Sign-in was cancelled.' : `Sign-in failed: ${error}`);
-      const t = setTimeout(() => {
-        window.location.href = `/signin?error=${encodeURIComponent(error)}`;
-      }, 2500);
+      const t = setTimeout(() => redirectToSignIn(error), 2500);
       return () => clearTimeout(t);
     }
 
     if (!token) {
       setStatus('error');
       setMessage('No token received. Redirecting to sign in...');
-      const t = setTimeout(() => {
-        window.location.href = '/signin';
-      }, 2000);
+      const t = setTimeout(() => redirectToSignIn('no_token'), 2000);
       return () => clearTimeout(t);
     }
 
@@ -39,36 +54,52 @@ export default function AuthCallbackPage() {
 
     const completeSignIn = async () => {
       try {
-        apiClient.setToken(token);
+        setMessage('Saving session...');
+        const tokenSaved = apiClient.persistToken(token);
+        if (!tokenSaved) {
+          throw new Error('token_persist_failed');
+        }
+
+        if (refreshToken) {
+          apiClient.persistRefreshToken(refreshToken);
+        }
+
+        stripSensitiveQuery();
+
         setMessage('Verifying session...');
         const response = await apiClient.getUserProfile();
         if (cancelled) return;
+
         if (response.success && response.data) {
           try {
             sessionStorage.setItem(AUTH_CALLBACK_USER_KEY, JSON.stringify(response.data));
           } catch {
-            // sessionStorage full or unavailable; auth will still work via token + getUserProfile on next page
+            // AuthProvider will fall back to getUserProfile using the persisted token.
           }
+
           setStatus('done');
           setMessage('Success! Redirecting...');
-          window.location.href = safeReturnUrl;
-        } else {
-          apiClient.clearToken();
-          setStatus('error');
-          setMessage('Could not load your account. Redirecting to sign in...');
-          setTimeout(() => { window.location.href = '/signin'; }, 2000);
+          window.location.replace(safeReturnUrl);
+          return;
         }
+
+        apiClient.clearToken();
+        setStatus('error');
+        setMessage('Could not load your account. Redirecting to sign in...');
+        setTimeout(() => redirectToSignIn('profile_failed'), 2000);
       } catch {
         if (cancelled) return;
         apiClient.clearToken();
         setStatus('error');
         setMessage('Could not complete sign-in. Redirecting...');
-        setTimeout(() => { window.location.href = '/signin'; }, 2000);
+        setTimeout(() => redirectToSignIn('callback_failed'), 2000);
       }
     };
 
-    completeSignIn();
-    return () => { cancelled = true; };
+    void completeSignIn();
+    return () => {
+      cancelled = true;
+    };
   }, [searchParams]);
 
   return (
