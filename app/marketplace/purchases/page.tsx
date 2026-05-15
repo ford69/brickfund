@@ -20,7 +20,7 @@ import {
   ChevronRight,
   Calendar,
 } from 'lucide-react';
-import { apiClient, MarketplacePurchase, type OrderStatus } from '@/lib/api';
+import { apiClient, MarketplacePurchase, getOrderStatusLabel, normalizeOrderStatus } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import Header from '@/components/Header';
@@ -100,26 +100,28 @@ export default function PurchaseHistory() {
     });
   };
 
-  const displayStatus = (p: MarketplacePurchase): OrderStatus | string => {
-    if (p.orderStatus) return p.orderStatus;
+  const displayStatus = (p: MarketplacePurchase) => {
+    if (p.orderStatus) return normalizeOrderStatus(p.orderStatus);
     if (p.status === 'completed') return 'delivered';
-    return p.status;
+    return normalizeOrderStatus(p.status);
   };
 
   const getStatusBadge = (status: string) => {
-    const s = status.toLowerCase();
+    const s = normalizeOrderStatus(status);
     const badges: Record<string, { label: string; className: string; icon: typeof Clock }> = {
-      pending: { label: 'Order received', className: 'bg-amber-50 text-amber-700 border-0', icon: Clock },
-      paid: { label: 'Quote shared', className: 'bg-blue-50 text-blue-700 border-0', icon: CheckCircle },
-      processing: { label: 'Confirmed', className: 'bg-slate-100 text-slate-700 border-0', icon: Package },
-      shipped: { label: 'Preparing delivery', className: 'bg-indigo-50 text-indigo-700 border-0', icon: Truck },
-      out_for_delivery: { label: 'Out for delivery', className: 'bg-indigo-50 text-indigo-700 border-0', icon: Truck },
-      delivered: { label: 'Delivered', className: 'bg-emerald-50 text-emerald-700 border-0', icon: CheckCircle },
-      completed: { label: 'Completed', className: 'bg-emerald-50 text-emerald-700 border-0', icon: CheckCircle },
+      pending: { label: getOrderStatusLabel('pending'), className: 'bg-amber-50 text-amber-700 border-0', icon: Clock },
+      quote_shared: { label: getOrderStatusLabel('quote_shared'), className: 'bg-blue-50 text-blue-700 border-0', icon: CheckCircle },
+      confirmed: { label: getOrderStatusLabel('confirmed'), className: 'bg-purple-50 text-purple-700 border-0', icon: CheckCircle },
+      processing: { label: getOrderStatusLabel('processing'), className: 'bg-slate-100 text-slate-700 border-0', icon: Package },
+      dispatching: { label: getOrderStatusLabel('dispatching'), className: 'bg-indigo-50 text-indigo-700 border-0', icon: Truck },
+      out_for_delivery: { label: getOrderStatusLabel('out_for_delivery'), className: 'bg-cyan-50 text-cyan-700 border-0', icon: Truck },
+      delivered: { label: getOrderStatusLabel('delivered'), className: 'bg-emerald-50 text-emerald-700 border-0', icon: CheckCircle },
+      paid: { label: getOrderStatusLabel('paid'), className: 'bg-blue-50 text-blue-700 border-0', icon: CheckCircle },
+      shipped: { label: getOrderStatusLabel('shipped'), className: 'bg-indigo-50 text-indigo-700 border-0', icon: Truck },
       failed: { label: 'Failed', className: 'bg-red-50 text-red-700 border-0', icon: XCircle },
       cancelled: { label: 'Cancelled', className: 'bg-muted text-muted-foreground border-0', icon: XCircle },
     };
-    const config = badges[s] || { label: status, className: 'rounded-lg', icon: Clock };
+    const config = badges[s] || { label: getOrderStatusLabel(s), className: 'rounded-lg', icon: Clock };
     const Icon = config.icon;
     return (
       <Badge className={`${config.className} font-medium rounded-lg gap-1`}>

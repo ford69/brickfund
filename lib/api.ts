@@ -7,7 +7,7 @@ const API_BASE_URL = rawApiUrl.endsWith('/api') ? rawApiUrl : `${rawApiUrl.repla
 
 /** Build backend OAuth URL for redirect. Call in browser; backend should redirect back to /auth/callback?token=... */
 export function getOAuthRedirectUrl(
-  provider: 'google' | 'facebook',
+  provider: 'google',
   returnUrl?: string
 ): string {
   const redirectUri =
@@ -294,16 +294,19 @@ export function getMarketplaceItemImageUrl(item: MarketplaceItem | null | undefi
   return item.imageUrl ?? item.image ?? (item.images && item.images[0]) ?? null;
 }
 
-/** Order status for tracking (backend may use a subset or different labels) */
-export type OrderStatus =
-  | 'pending'      // Order request received
-  | 'paid'         // Quote shared with customer
-  | 'processing'   // Customer confirmed order
-  | 'shipped'      // Preparing dispatch
-  | 'out_for_delivery'
-  | 'delivered'
-  | 'failed'
-  | 'cancelled';
+import type { OrderStatus } from './orderStatus';
+/** Order status for tracking — re-exported from lib/orderStatus.ts */
+export type { OrderStatus } from './orderStatus';
+export {
+  normalizeOrderStatus,
+  getOrderStatusLabel,
+  getOrderTrackingStepIndex,
+  getAdminNextStatus,
+  getAdminNextStatusButtonLabel,
+  getAdminPipelineStage,
+  ADMIN_PIPELINE_LABELS,
+  ORDER_TRACKING_STEPS,
+} from './orderStatus';
 
 export interface MarketplacePurchase {
   _id: string;
@@ -540,6 +543,20 @@ class ApiClient {
     }
     
     return response;
+  }
+
+  async forgotPassword(email: string) {
+    return this.request<{ resetToken?: string }>('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  }
+
+  async resetPassword(token: string, password: string) {
+    return this.request('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, password }),
+    });
   }
 
   // Projects API

@@ -5,7 +5,6 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import {
   ArrowLeft,
   RefreshCw,
@@ -18,19 +17,19 @@ import {
   Receipt,
   Store,
 } from 'lucide-react';
-import { apiClient, MarketplacePurchase, type OrderStatus } from '@/lib/api';
+import {
+  apiClient,
+  MarketplacePurchase,
+  ORDER_TRACKING_STEPS,
+  getOrderTrackingStepIndex,
+  getOrderStatusLabel,
+  normalizeOrderStatus,
+} from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import Header from '@/components/Header';
 
-const stepOrder: OrderStatus[] = ['pending', 'paid', 'processing', 'shipped', 'out_for_delivery', 'delivered'];
-
-function getStepIndex(status: string): number {
-  const s = status.toLowerCase();
-  if (s === 'completed' || s === 'delivered' || s === 'out_for_delivery') return 4;
-  const i = stepOrder.indexOf(s as OrderStatus);
-  return i >= 0 ? Math.min(i, 4) : 0;
-}
+const stepIcons = [Receipt, CheckCircle2, Package, Package, Truck, Truck, CheckCircle2];
 
 export default function OrderTrackingPage() {
   const router = useRouter();
@@ -129,41 +128,60 @@ export default function OrderTrackingPage() {
     );
   }
 
-  const currentStatus = (order.orderStatus || order.status) as string;
-  const currentStepIndex = getStepIndex(currentStatus === 'completed' ? 'delivered' : currentStatus);
-  const itemName = order.item && typeof order.item === 'object' ? order.item.name : 'Order items';
+  const rawStatus = (order.orderStatus || order.status) as string;
+  const normalizedStatus = normalizeOrderStatus(rawStatus === 'completed' ? 'delivered' : rawStatus);
+  const currentStepIndex = getOrderTrackingStepIndex(normalizedStatus);
   const isPickup = order.fulfillmentMethod === 'pickup';
   const orderTimeline = order.timeline || ((order as any).deliveryTimeline as string | undefined);
   const orderNotes = order.notes || ((order as any).customerNotes as string | undefined);
+  const isTerminal = normalizedStatus === 'failed' || normalizedStatus === 'cancelled';
 
-  const steps: { key: OrderStatus; label: string; icon: typeof Package }[] = isPickup
-    ? [
-        { key: 'pending', label: 'Order request received', icon: Receipt },
-        { key: 'paid', label: 'Quote shared (within 48 hours)', icon: CheckCircle2 },
-        { key: 'processing', label: 'Order confirmed', icon: Package },
-        { key: 'shipped', label: 'Ready for pickup', icon: Store },
-        { key: 'delivered', label: 'Picked up', icon: CheckCircle2 },
-      ]
-    : [
-        { key: 'pending', label: 'Order request received', icon: Receipt },
-        { key: 'paid', label: 'Quote shared (within 48 hours)', icon: CheckCircle2 },
-        { key: 'processing', label: 'Order confirmed', icon: Package },
-        { key: 'shipped', label: 'Preparing dispatch', icon: Truck },
-        { key: 'delivered', label: 'Delivered', icon: CheckCircle2 },
-      ];
+  const itemName =
+    order.items && order.items.length > 0
+      ? order.items.map((line) => line.item?.name || 'Item').join(', ')
+      : order.item && typeof order.item === 'object'
+        ? order.item.name
+        : 'Order items';
+
+  const displayAmount =
+    order.quoteAmount !== undefined ? order.quoteAmount : order.amount;
+
+  const pickupStepLabels: Record<string, string> = {
+    pending: 'Order request received',
+    quote_shared: 'Quote shared',
+    confirmed: 'Order confirmed',
+    processing: 'Order processing',
+    dispatching: 'Ready for pickup',
+    out_for_delivery: 'Ready for pickup',
+    delivered: 'Picked up',
+  };
+
+  const steps = ORDER_TRACKING_STEPS.map((key, index) => {
+    const baseLabel = getOrderStatusLabel(key);
+    const label =
+      isPickup && pickupStepLabels[key] ? pickupStepLabels[key] : baseLabel;
+    const Icon = stepIcons[index] || Package;
+    return { key, label, Icon };
+  });
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
 
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
-        <Link
-          href="/marketplace/purchases"
-          className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-foreground mb-6"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to My Orders
-        </Link>
+        <div className="flex items-center justify-between mb-6">
+          <Link
+            href="/marketplace/purchases"
+            className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to My Orders
+          </Link>
+          <Button variant="ghost" size="sm" onClick={fetchOrder} className="rounded-xl">
+            <RefreshCw className="h-4 w-4 mr-1" />
+            Refresh
+          </Button>
+        </div>
 
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-foreground">Order #{order._id.slice(-8).toUpperCase()}</h1>
@@ -175,7 +193,31 @@ export default function OrderTrackingPage() {
           </p>
         </div>
 
-        {/* Status timeline */}
+        {isTerminal && (
+          <div className="mb-6 p-4 rounded-xl border border-destructive/30 bg-destructive/10 text-destructive text-sm">
+            This order is {getOrderStatusLabel(normalizedStatus).toLowerCase()}.
+          </div>
+        )}
+
+        {order.quoteAmount !== undefined && currentStepIndex >= 1 && (
+          <Card className="mb-6 border border-primary/20 rounded-2xl bg-primary/5">
+            <CardContent className="pt-6">
+              <p className="text-sm font-medium text-foreground">Your quote</p>
+              <p className="text-xl font-bold text-foreground mt-1">
+                {formatCurrency(order.quoteAmount, order.quoteCurrency || order.currency)}
+              </p>
+              {order.quoteDeliveryWindow && (
+                <p className="text-sm text-muted-foreground mt-2">
+                  Delivery window: {order.quoteDeliveryWindow}
+                </p>
+              )}
+              {order.quoteMessage && (
+                <p className="text-sm text-muted-foreground mt-2">{order.quoteMessage}</p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         <Card className="mb-8 border border-border rounded-2xl overflow-hidden">
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
@@ -186,9 +228,9 @@ export default function OrderTrackingPage() {
           <CardContent className="pt-0">
             <div className="relative">
               {steps.map((step, index) => {
-                const isDone = index <= currentStepIndex;
-                const isCurrent = index === currentStepIndex;
-                const Icon = step.icon;
+                const isDone = !isTerminal && index <= currentStepIndex;
+                const isCurrent = !isTerminal && index === currentStepIndex;
+                const Icon = step.Icon;
                 return (
                   <div key={step.key} className="flex gap-4 pb-6 last:pb-0">
                     <div className="flex flex-col items-center">
@@ -208,14 +250,10 @@ export default function OrderTrackingPage() {
                         {step.label}
                       </p>
                       {index === 0 && order.createdAt && (
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {formatDateTime(order.createdAt)}
-                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{formatDateTime(order.createdAt)}</p>
                       )}
                       {step.key === 'delivered' && order.deliveredAt && (
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {formatDateTime(order.deliveredAt)}
-                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{formatDateTime(order.deliveredAt)}</p>
                       )}
                     </div>
                   </div>
@@ -225,7 +263,6 @@ export default function OrderTrackingPage() {
           </CardContent>
         </Card>
 
-        {/* Delivery / pickup & tracking */}
         <Card className="mb-8 border border-border rounded-2xl overflow-hidden">
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
@@ -287,12 +324,13 @@ export default function OrderTrackingPage() {
               </p>
             )}
             {!order.estimatedDeliveryAt && !order.deliveredAt && !order.trackingNumber && (
-              <p className="text-sm text-muted-foreground">Delivery and tracking details will appear here once available.</p>
+              <p className="text-sm text-muted-foreground">
+                Delivery and tracking details will appear here once available.
+              </p>
             )}
           </CardContent>
         </Card>
 
-        {/* Order summary */}
         <Card className="border border-border rounded-2xl overflow-hidden">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Order summary</CardTitle>
@@ -300,7 +338,7 @@ export default function OrderTrackingPage() {
           <CardContent className="pt-0">
             <p className="text-sm text-foreground font-medium">{itemName}</p>
             <p className="text-lg font-bold text-foreground mt-2">
-              {formatCurrency(order.amount, order.currency)}
+              {formatCurrency(displayAmount, order.quoteCurrency || order.currency)}
             </p>
             {order.paymentReference && (
               <p className="text-xs text-muted-foreground mt-2 font-mono">Ref: {order.paymentReference}</p>

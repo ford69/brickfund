@@ -20,24 +20,43 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Calendar, Clock3, MapPin, RefreshCw, ShoppingCart, Store, Truck } from 'lucide-react';
-import { apiClient, MarketplacePurchase, type OrderStatus } from '@/lib/api';
+import {
+  Calendar,
+  ChevronRight,
+  Clock3,
+  MapPin,
+  MoreHorizontal,
+  Package,
+  RefreshCw,
+  Search,
+  ShoppingCart,
+  Store,
+} from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  apiClient,
+  MarketplacePurchase,
+  type OrderStatus,
+  getAdminPipelineStage,
+  getAdminNextStatus,
+  getAdminNextStatusButtonLabel,
+  ADMIN_PIPELINE_LABELS,
+  normalizeOrderStatus,
+} from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 
 type FilterStatus = 'all' | OrderStatus;
 type TimelineFilter = 'all' | 'urgent' | 'flexible';
-type StageFilter = 'all' | PipelineStage;
-type PipelineStage =
-  | 'new_request'
-  | 'reviewing'
-  | 'quote_sent'
-  | 'negotiation'
-  | 'confirmed'
-  | 'fulfilled'
-  | 'completed'
-  | 'cancelled'
-  | 'failed';
+import type { AdminPipelineStage } from '@/lib/orderStatus';
+
+type StageFilter = 'all' | AdminPipelineStage;
 
 export default function AdminMarketplaceOrdersPage() {
   const router = useRouter();
@@ -62,6 +81,7 @@ export default function AdminMarketplaceOrdersPage() {
   const [sendViaWhatsApp, setSendViaWhatsApp] = useState(false);
   const [sendingQuote, setSendingQuote] = useState(false);
   const [assignedToById, setAssignedToById] = useState<Record<string, string>>({});
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -96,38 +116,18 @@ export default function AdminMarketplaceOrdersPage() {
     }
   };
 
-  const getPipelineStage = (order: MarketplacePurchase): PipelineStage => {
-    const status = (order.orderStatus || order.status || 'pending') as string;
-    if (status === 'cancelled') return 'cancelled';
-    if (status === 'failed') return 'failed';
-    if (status === 'delivered' || order.status === 'completed') return 'completed';
-    if (status === 'out_for_delivery') return 'fulfilled';
-    if (status === 'shipped') return 'negotiation';
-    if (status === 'paid') return 'quote_sent';
-    if (status === 'processing') return 'confirmed';
-    if (status === 'pending' && order.quoteAmount !== undefined) return 'reviewing';
-    return 'new_request';
-  };
+  const getPipelineStage = (order: MarketplacePurchase) =>
+    getAdminPipelineStage(order.orderStatus || order.status, order.quoteAmount !== undefined);
 
-  const stageLabel: Record<PipelineStage, string> = {
-    new_request: 'New Request',
-    reviewing: 'Reviewing',
-    quote_sent: 'Quote Sent',
-    negotiation: 'Negotiation',
-    confirmed: 'Confirmed',
-    fulfilled: 'Fulfilled',
-    completed: 'Completed',
-    cancelled: 'Cancelled',
-    failed: 'Failed',
-  };
+  const stageLabel = ADMIN_PIPELINE_LABELS;
 
-  const stageBadgeClass: Record<PipelineStage, string> = {
+  const stageBadgeClass: Record<AdminPipelineStage, string> = {
     new_request: 'bg-slate-100 text-slate-700 border-slate-200',
-    reviewing: 'bg-indigo-100 text-indigo-700 border-indigo-200',
     quote_sent: 'bg-blue-100 text-blue-700 border-blue-200',
-    negotiation: 'bg-amber-100 text-amber-700 border-amber-200',
     confirmed: 'bg-purple-100 text-purple-700 border-purple-200',
-    fulfilled: 'bg-cyan-100 text-cyan-700 border-cyan-200',
+    processing: 'bg-indigo-100 text-indigo-700 border-indigo-200',
+    dispatching: 'bg-amber-100 text-amber-700 border-amber-200',
+    delivering: 'bg-cyan-100 text-cyan-700 border-cyan-200',
     completed: 'bg-emerald-100 text-emerald-700 border-emerald-200',
     cancelled: 'bg-zinc-100 text-zinc-700 border-zinc-200',
     failed: 'bg-red-100 text-red-700 border-red-200',
@@ -226,7 +226,7 @@ export default function AdminMarketplaceOrdersPage() {
     try {
       setSendingQuote(true);
       const response = await apiClient.updateMarketplaceOrderStatus(quoteTargetOrder._id, {
-        orderStatus: 'paid',
+        orderStatus: 'quote_shared',
         quoteAmount: parsedAmount,
         quoteCurrency: quoteTargetOrder.currency || 'GHS',
         quoteDeliveryWindow: quoteDeliveryWindow.trim() || undefined,
@@ -283,7 +283,12 @@ export default function AdminMarketplaceOrdersPage() {
   const filteredOrders = orders.filter((order) => {
     const status = (order.orderStatus || order.status) as string;
     const stage = getPipelineStage(order);
-    if (filterStatus !== 'all' && status !== filterStatus) return false;
+    if (filterStatus !== 'all') {
+      const matchesRaw = status === filterStatus;
+      const matchesNormalized =
+        normalizeOrderStatus(status) === normalizeOrderStatus(filterStatus);
+      if (!matchesRaw && !matchesNormalized) return false;
+    }
     if (filterStage !== 'all' && stage !== filterStage) return false;
     if (filterTimeline !== 'all' && (order.timeline || 'flexible') !== filterTimeline) return false;
     if (filterLocation.trim() && !(order.deliveryAddress || '').toLowerCase().includes(filterLocation.toLowerCase())) return false;
@@ -299,53 +304,37 @@ export default function AdminMarketplaceOrdersPage() {
     return idMatch || refMatch || itemMatch;
   });
 
-  const renderActions = (order: MarketplacePurchase) => {
+  const getPrimaryAction = (order: MarketplacePurchase) => {
     const stage = getPipelineStage(order);
+    const currentStatus = normalizeOrderStatus(order.orderStatus || order.status);
+    const nextStatus = getAdminNextStatus(currentStatus);
+    const nextLabel = getAdminNextStatusButtonLabel(currentStatus);
+
     if (stage === 'new_request') {
-      return (
-        <Button size="sm" variant="outline" onClick={() => handleStatusChange(order, 'processing')} disabled={updatingId === order._id}>
-          Review Request
-        </Button>
-      );
+      return { label: 'Share quote', onClick: () => openQuoteDialog(order) };
     }
-    if (stage === 'reviewing') {
-      return (
-        <Button size="sm" variant="outline" onClick={() => openQuoteDialog(order)} disabled={updatingId === order._id}>
-          Create Quote
-        </Button>
-      );
+    if (nextStatus && nextLabel) {
+      return { label: nextLabel, onClick: () => handleStatusChange(order, nextStatus) };
     }
-    if (stage === 'quote_sent') {
-      return (
-        <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => openQuoteDialog(order)}>
-            Resend Quote
-          </Button>
-          <Button size="sm" onClick={() => handleStatusChange(order, 'processing')} disabled={updatingId === order._id}>
-            Mark Accepted
-          </Button>
-        </div>
-      );
-    }
-    if (stage === 'confirmed') {
-      return (
-        <Button size="sm" onClick={() => handleStatusChange(order, 'out_for_delivery')} disabled={updatingId === order._id}>
-          Mark Fulfilled
-        </Button>
-      );
-    }
-    if (stage === 'fulfilled') {
-      return (
-        <Button size="sm" onClick={() => handleStatusChange(order, 'delivered')} disabled={updatingId === order._id}>
-          Complete
-        </Button>
-      );
-    }
-    return (
-      <Button size="sm" variant="ghost" onClick={() => setQuickViewOrder(order)}>
-        View
-      </Button>
-    );
+    return { label: 'View details', onClick: () => setQuickViewOrder(order) };
+  };
+
+  const formatShortDate = (dateString: string) =>
+    new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+
+  const clearFilters = () => {
+    setSearch('');
+    setFilterStatus('all');
+    setFilterStage('all');
+    setFilterTimeline('all');
+    setFilterLocation('');
+    setFilterProductType('');
+    setFilterStartDate('');
+    setFilterEndDate('');
   };
 
   const productTypes = useMemo(
@@ -378,246 +367,224 @@ export default function AdminMarketplaceOrdersPage() {
         </div>
       </header>
 
-      <main className="px-4 sm:px-6 lg:px-8 py-8">
-        <Card className="mb-6">
-          <CardHeader className="space-y-4">
-            <div>
-              <CardTitle>Orders</CardTitle>
-              <CardDescription>Track requests, quotes, and fulfillment.</CardDescription>
-            </div>
-            <div className="rounded-xl border border-border bg-muted/20 p-3 space-y-3">
-              <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-3">
-                <Input
-                  placeholder="Search by order ID, reference, or item..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="h-10 bg-background"
-                />
-                <Button
-                  variant="outline"
-                  className="h-10"
-                  onClick={() => {
-                    setSearch('');
-                    setFilterStatus('all');
-                    setFilterStage('all');
-                    setFilterTimeline('all');
-                    setFilterLocation('');
-                    setFilterProductType('');
-                    setFilterStartDate('');
-                    setFilterEndDate('');
-                  }}
-                >
-                  Clear Filters
+      <main className="px-4 sm:px-6 lg:px-8 py-6 sm:py-8 max-w-[1600px] mx-auto">
+        <Card className="border-border shadow-sm">
+          <CardHeader className="space-y-5 pb-4 border-b border-border/60">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <CardTitle className="text-xl">Orders</CardTitle>
+                <CardDescription className="mt-1">
+                  {isLoading
+                    ? 'Loading…'
+                    : `${filteredOrders.length} of ${orders.length} order${orders.length === 1 ? '' : 's'}`}
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button variant="outline" size="sm" onClick={fetchOrders} disabled={isLoading}>
+                  <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setFiltersOpen((o) => !o)}>
+                  {filtersOpen ? 'Hide filters' : 'Filters'}
                 </Button>
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-                <Select value={filterStage} onValueChange={(v: StageFilter) => setFilterStage(v)}>
-                  <SelectTrigger className="h-10 bg-background">
-                    <SelectValue placeholder="Pipeline stage" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All stages</SelectItem>
-                    <SelectItem value="new_request">New Request</SelectItem>
-                    <SelectItem value="reviewing">Reviewing</SelectItem>
-                    <SelectItem value="quote_sent">Quote Sent</SelectItem>
-                    <SelectItem value="negotiation">Negotiation</SelectItem>
-                    <SelectItem value="confirmed">Confirmed</SelectItem>
-                    <SelectItem value="fulfilled">Fulfilled</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select value={filterTimeline} onValueChange={(v: TimelineFilter) => setFilterTimeline(v)}>
-                  <SelectTrigger className="h-10 bg-background">
-                    <SelectValue placeholder="Timeline" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All timelines</SelectItem>
-                    <SelectItem value="urgent">Urgent</SelectItem>
-                    <SelectItem value="flexible">Flexible</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select
-                  value={filterProductType || 'all'}
-                  onValueChange={(v) => setFilterProductType(v === 'all' ? '' : v)}
-                >
-                  <SelectTrigger className="h-10 bg-background">
-                    <SelectValue placeholder="Product type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All products</SelectItem>
-                    {productTypes.map((p) => (
-                      <SelectItem key={p} value={p}>
-                        {p}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select value={filterStatus} onValueChange={(v: FilterStatus) => setFilterStatus(v)}>
-                  <SelectTrigger className="h-10 bg-background">
-                    <SelectValue placeholder="Backend status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Statuses</SelectItem>
-                    <SelectItem value="pending">New request</SelectItem>
-                    <SelectItem value="paid">Quote shared</SelectItem>
-                    <SelectItem value="processing">Confirmed</SelectItem>
-                    <SelectItem value="shipped">Preparing dispatch</SelectItem>
-                    <SelectItem value="out_for_delivery">Out for delivery</SelectItem>
-                    <SelectItem value="delivered">Delivered</SelectItem>
-                    <SelectItem value="failed">Failed</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <Input
-                  className="h-10 bg-background"
-                  placeholder="Location / region"
-                  value={filterLocation}
-                  onChange={(e) => setFilterLocation(e.target.value)}
-                />
-                <Input
-                  className="h-10 bg-background"
-                  type="date"
-                  value={filterStartDate}
-                  onChange={(e) => setFilterStartDate(e.target.value)}
-                />
-                <Input
-                  className="h-10 bg-background"
-                  type="date"
-                  value={filterEndDate}
-                  onChange={(e) => setFilterEndDate(e.target.value)}
-                />
-              </div>
             </div>
+
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+              <Input
+                placeholder="Search order ID, reference, or product…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-11 pl-10 bg-background"
+              />
+            </div>
+            {filtersOpen && (
+              <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium">Filter orders</p>
+                  <Button variant="ghost" size="sm" onClick={clearFilters}>Clear all</Button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Stage</Label>
+                    <Select value={filterStage} onValueChange={(v: StageFilter) => setFilterStage(v)}>
+                      <SelectTrigger className="h-10 bg-background"><SelectValue placeholder="All stages" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All stages</SelectItem>
+                        <SelectItem value="new_request">New request</SelectItem>
+                        <SelectItem value="quote_sent">Quote shared</SelectItem>
+                        <SelectItem value="confirmed">Order confirmation</SelectItem>
+                        <SelectItem value="processing">Order processing</SelectItem>
+                        <SelectItem value="dispatching">Order dispatching</SelectItem>
+                        <SelectItem value="delivering">Delivering</SelectItem>
+                        <SelectItem value="completed">Delivered</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Timeline</Label>
+                    <Select value={filterTimeline} onValueChange={(v: TimelineFilter) => setFilterTimeline(v)}>
+                      <SelectTrigger className="h-10 bg-background"><SelectValue placeholder="All timelines" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All timelines</SelectItem>
+                        <SelectItem value="urgent">Urgent</SelectItem>
+                        <SelectItem value="flexible">Flexible</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Status</Label>
+                    <Select value={filterStatus} onValueChange={(v: FilterStatus) => setFilterStatus(v)}>
+                      <SelectTrigger className="h-10 bg-background"><SelectValue placeholder="All statuses" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All statuses</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="quote_shared">Quote shared</SelectItem>
+                        <SelectItem value="confirmed">Confirmed</SelectItem>
+                        <SelectItem value="processing">Processing</SelectItem>
+                        <SelectItem value="dispatching">Dispatching</SelectItem>
+                        <SelectItem value="out_for_delivery">Delivering</SelectItem>
+                        <SelectItem value="delivered">Delivered</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5 sm:col-span-2 lg:col-span-1">
+                    <Label className="text-xs text-muted-foreground">Product</Label>
+                    <Select value={filterProductType || 'all'} onValueChange={(v) => setFilterProductType(v === 'all' ? '' : v)}>
+                      <SelectTrigger className="h-10 bg-background"><SelectValue placeholder="All products" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All products</SelectItem>
+                        {productTypes.map((p) => (<SelectItem key={p} value={p}>{p}</SelectItem>))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Location</Label>
+                    <Input className="h-10 bg-background" placeholder="City or region" value={filterLocation} onChange={(e) => setFilterLocation(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">From</Label>
+                    <Input className="h-10 bg-background" type="date" value={filterStartDate} onChange={(e) => setFilterStartDate(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">To</Label>
+                    <Input className="h-10 bg-background" type="date" value={filterEndDate} onChange={(e) => setFilterEndDate(e.target.value)} />
+                  </div>
+                </div>
+              </div>
+            )}
           </CardHeader>
+
           <CardContent className="p-0">
             {isLoading ? (
-              <div className="flex flex-col items-center justify-center py-16">
+              <div className="flex flex-col items-center justify-center py-20">
                 <RefreshCw className="h-8 w-8 animate-spin text-primary mb-3" />
-                <p className="text-muted-foreground text-sm">Loading orders...</p>
+                <p className="text-muted-foreground text-sm">Loading orders…</p>
               </div>
             ) : filteredOrders.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16">
+              <div className="flex flex-col items-center justify-center py-20 px-4">
                 <ShoppingCart className="h-10 w-10 text-muted-foreground mb-3" />
-                <p className="text-muted-foreground text-sm">No orders found.</p>
+                <p className="text-muted-foreground text-sm text-center">No orders match your search or filters.</p>
+                <Button variant="link" size="sm" className="mt-2" onClick={clearFilters}>Clear filters</Button>
               </div>
             ) : (
-              <div className="overflow-x-auto max-h-[72vh]">
-                <Table>
-                  <TableHeader className="sticky top-0 bg-background z-10">
-                    <TableRow>
-                      <TableHead>Order ID</TableHead>
-                      <TableHead>Customer</TableHead>
-                      <TableHead>Product</TableHead>
-                      <TableHead>Qty</TableHead>
-                      <TableHead>Location</TableHead>
-                      <TableHead>Timeline</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Quote</TableHead>
-                      <TableHead>Assigned</TableHead>
-                      <TableHead>Created</TableHead>
-                      <TableHead className="w-[260px]">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredOrders.map((order) => {
-                      const stage = getPipelineStage(order);
-                      const isUrgent = getPriority(order) === 'Urgent';
-                      return (
-                        <TableRow
-                          key={order._id}
-                          className={isUrgent ? 'bg-red-50/40 hover:bg-red-50/60' : ''}
-                          onClick={() => setQuickViewOrder(order)}
-                        >
-                          <TableCell>
-                            <div className="flex flex-col gap-1">
-                              <span className="font-medium">
-                                #{order._id.slice(-8).toUpperCase()}
-                              </span>
-                              {order.paymentReference && (
-                                <span className="text-xs text-muted-foreground font-mono">
-                                  Ref: {order.paymentReference}
-                                </span>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <span className="text-sm">Customer</span>
-                          </TableCell>
-                          <TableCell>
-                            <span className="text-sm">{getProductName(order)}</span>
-                          </TableCell>
-                          <TableCell>
-                            <span className="text-sm font-medium">{getQuantity(order)}</span>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1 max-w-[180px]">
-                              <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                              <span className="text-xs text-muted-foreground line-clamp-1">
-                                {order.deliveryAddress || 'N/A'}
-                              </span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant="outline"
-                              className={isUrgent ? 'bg-red-100 text-red-700 border-red-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200'}
-                            >
-                              {getPriority(order)}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="rounded-lg">
-                              {getOrderType(order)}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className={`rounded-lg ${stageBadgeClass[stage]}`}>
-                              {stageLabel[stage]}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <span className="text-sm">{getAmountLabel(order)}</span>
-                          </TableCell>
-                          <TableCell>
-                            <Select
-                              value={assignedToById[order._id] || 'unassigned'}
-                              onValueChange={(v) => handleAssign(order._id, v)}
-                            >
-                              <SelectTrigger className="w-[130px]" onClick={(e) => e.stopPropagation()}>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="unassigned">Unassigned</SelectItem>
-                                <SelectItem value="clifford">Clifford</SelectItem>
-                                <SelectItem value="operations">Operations</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                              <Calendar className="h-3.5 w-3.5" />
-                              {formatDateTime(order.createdAt)}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                              {renderActions(order)}
-                              <Button size="sm" variant="ghost" onClick={() => setQuickViewOrder(order)}>
-                                View
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
+              <>
+                <div className="hidden lg:block overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="hover:bg-transparent border-b border-border">
+                        <TableHead className="py-4 pl-6 font-medium text-muted-foreground">Order</TableHead>
+                        <TableHead className="py-4 font-medium text-muted-foreground">Product</TableHead>
+                        <TableHead className="py-4 font-medium text-muted-foreground">Delivery</TableHead>
+                        <TableHead className="py-4 font-medium text-muted-foreground">Status</TableHead>
+                        <TableHead className="py-4 font-medium text-muted-foreground">Quote</TableHead>
+                        <TableHead className="py-4 pr-6 text-right font-medium text-muted-foreground">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredOrders.map((order) => {
+                        const stage = getPipelineStage(order);
+                        const isUrgent = getPriority(order) === 'Urgent';
+                        const primary = getPrimaryAction(order);
+                        return (
+                          <TableRow
+                            key={order._id}
+                            className={`cursor-pointer border-b border-border/50 ${isUrgent ? 'bg-red-50/30 hover:bg-red-50/50' : 'hover:bg-muted/40'}`}
+                            onClick={() => setQuickViewOrder(order)}
+                          >
+                            <TableCell className="py-5 pl-6 align-top">
+                              <p className="font-semibold text-foreground">#{order._id.slice(-8).toUpperCase()}</p>
+                              <p className="text-xs text-muted-foreground mt-1">{formatShortDate(order.createdAt)}</p>
+                            </TableCell>
+                            <TableCell className="py-5 align-top max-w-[200px]">
+                              <p className="font-medium text-sm line-clamp-2">{getProductName(order)}</p>
+                              <p className="text-xs text-muted-foreground mt-1">Qty {getQuantity(order)}</p>
+                            </TableCell>
+                            <TableCell className="py-5 align-top max-w-[220px]">
+                              <p className="text-sm line-clamp-2 leading-relaxed">{order.deliveryAddress || '—'}</p>
+                              <Badge variant="outline" className={`mt-2 text-xs ${isUrgent ? 'bg-red-50 text-red-700 border-red-200' : 'bg-muted/50'}`}>{getPriority(order)}</Badge>
+                            </TableCell>
+                            <TableCell className="py-5 align-top">
+                              <Badge variant="outline" className={`${stageBadgeClass[stage]} whitespace-nowrap`}>{stageLabel[stage]}</Badge>
+                            </TableCell>
+                            <TableCell className="py-5 align-top">
+                              <p className="text-sm font-medium">{getAmountLabel(order)}</p>
+                            </TableCell>
+                            <TableCell className="py-5 pr-6 align-top text-right" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center justify-end gap-1">
+                                <Button size="sm" className="h-9" onClick={() => primary.onClick()} disabled={updatingId === order._id}>
+                                  {updatingId === order._id ? 'Updating…' : primary.label}
+                                </Button>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button size="icon" variant="ghost" className="h-9 w-9"><MoreHorizontal className="h-4 w-4" /></Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-48">
+                                    <DropdownMenuItem onClick={() => setQuickViewOrder(order)}>View details</DropdownMenuItem>
+                                    {(stage === 'new_request' || stage === 'quote_sent') && (
+                                      <DropdownMenuItem onClick={() => openQuoteDialog(order)}>{stage === 'quote_sent' ? 'Resend quote' : 'Share quote'}</DropdownMenuItem>
+                                    )}
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={() => handleStatusChange(order, 'cancelled')}>Cancel order</DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+                <div className="lg:hidden divide-y divide-border">
+                  {filteredOrders.map((order) => {
+                    const stage = getPipelineStage(order);
+                    const isUrgent = getPriority(order) === 'Urgent';
+                    const primary = getPrimaryAction(order);
+                    return (
+                      <div key={order._id} className={`p-5 space-y-4 ${isUrgent ? 'bg-red-50/30' : ''}`} onClick={() => setQuickViewOrder(order)}>
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-semibold">#{order._id.slice(-8).toUpperCase()}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{formatShortDate(order.createdAt)}</p>
+                          </div>
+                          <Badge variant="outline" className={stageBadgeClass[stage]}>{stageLabel[stage]}</Badge>
+                        </div>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex gap-2"><Package className="h-4 w-4 text-muted-foreground shrink-0" /><span className="line-clamp-2">{getProductName(order)} · Qty {getQuantity(order)}</span></div>
+                          {order.deliveryAddress && <div className="flex gap-2"><MapPin className="h-4 w-4 text-muted-foreground shrink-0" /><span className="text-muted-foreground line-clamp-2">{order.deliveryAddress}</span></div>}
+                          <p className="font-medium">{getAmountLabel(order)}</p>
+                        </div>
+                        <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                          <Button size="sm" className="flex-1 h-10" onClick={() => primary.onClick()} disabled={updatingId === order._id}>{primary.label}</Button>
+                          <Button size="sm" variant="outline" className="h-10 px-3" onClick={() => setQuickViewOrder(order)}><ChevronRight className="h-4 w-4" /></Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
@@ -726,10 +693,28 @@ export default function AdminMarketplaceOrdersPage() {
                   <CardContent className="space-y-3">
                     <p className="text-sm"><span className="text-muted-foreground">Quote:</span> {getAmountLabel(quickViewOrder)}</p>
                     <div className="flex flex-wrap gap-2">
-                      <Button variant="outline" onClick={() => openQuoteDialog(quickViewOrder)}>Create / Edit Quote</Button>
-                      <Button variant="outline" onClick={() => openQuoteDialog(quickViewOrder)}>Send Quote (Email + WhatsApp)</Button>
-                      <Button variant="outline" disabled>View Quote PDF</Button>
-                      <Button variant="outline" onClick={() => handleStatusChange(quickViewOrder, 'processing')}>Mark Accepted</Button>
+                      {(getPipelineStage(quickViewOrder) === 'new_request' ||
+                        getPipelineStage(quickViewOrder) === 'quote_sent') && (
+                        <Button variant="outline" onClick={() => openQuoteDialog(quickViewOrder)}>
+                          {getPipelineStage(quickViewOrder) === 'quote_sent' ? 'Resend quote' : 'Share quote'}
+                        </Button>
+                      )}
+                      {(() => {
+                        const next = getAdminNextStatus(
+                          normalizeOrderStatus(quickViewOrder.orderStatus || quickViewOrder.status)
+                        );
+                        const label = getAdminNextStatusButtonLabel(
+                          normalizeOrderStatus(quickViewOrder.orderStatus || quickViewOrder.status)
+                        );
+                        return next && label ? (
+                          <Button
+                            onClick={() => handleStatusChange(quickViewOrder, next)}
+                            disabled={updatingId === quickViewOrder._id}
+                          >
+                            {label}
+                          </Button>
+                        ) : null;
+                      })()}
                     </div>
                   </CardContent>
                 </Card>
